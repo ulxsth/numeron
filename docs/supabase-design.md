@@ -41,6 +41,12 @@
 | `match_wins_required` | `smallint` | 先取 1〜10（`1`＝従来の 1 ゲームのみ） |
 | `match_wins` | `jsonb` | ユーザー ID 文字列キー・ゲーム単位の勝ち数の累積 |
 | `current_game_index` | `int` | マッチ内の現在のゲーム番号（1 始まり） |
+| `double_attacker_id` | `uuid` nullable | ダブルを使ったプレイヤー |
+| `double_phase` | `text` nullable | `await_reveal` / `first_call` / `second_call`。ダブル進行中のみ。 |
+| `double_reveal_slot` | `smallint` | 開示された桁（1 始まり） |
+| `double_reveal_digit` | `text` | 開示された数字 1 文字 |
+
+ダブル操作は RPC `double_start(room_id)`（手番・未使用カード必須）、`double_submit_reveal_slot(room_id, slot)`（防御のみ、`await_reveal` 時）で行う。
 
 ### 3.2 `room_members`
 

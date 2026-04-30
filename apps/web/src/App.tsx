@@ -17,6 +17,10 @@ type Room = {
   match_wins_required: number
   match_wins: Record<string, number>
   current_game_index: number
+  double_attacker_id?: string | null
+  double_phase?: string | null
+  double_reveal_slot?: number | null
+  double_reveal_digit?: string | null
 }
 
 type GuessRow = {
@@ -314,6 +318,31 @@ export function App() {
     }
   }
 
+  async function handleDoubleStart() {
+    setError(null)
+    if (!roomId) return
+    const { error: e } = await getSupabase().rpc('double_start', { p_room_id: roomId })
+    if (e) {
+      setError(e.message)
+      return
+    }
+    await refreshAll()
+  }
+
+  async function handleDoubleRevealPick(slot: number) {
+    setError(null)
+    if (!roomId) return
+    const { error: e } = await getSupabase().rpc('double_submit_reveal_slot', {
+      p_room_id: roomId,
+      p_slot: slot,
+    })
+    if (e) {
+      setError(e.message)
+      return
+    }
+    await refreshAll()
+  }
+
   function leaveRoom() {
     setRoomId(null)
     setRoom(null)
@@ -348,6 +377,37 @@ export function App() {
 
   const dl = room?.digit_length ?? createDigitLen
   const myTurn = room?.status === 'playing' && room.current_turn_user_id === userId
+  const doublePhase = room?.double_phase ?? null
+  const doubleAttackerId = room?.double_attacker_id ?? null
+  const canSubmitGuess =
+    room?.status === 'playing' &&
+    myTurn &&
+    doublePhase !== 'await_reveal' &&
+    (doublePhase === null || doublePhase === 'first_call' || doublePhase === 'second_call')
+  const waitingDoubleReveal =
+    room?.status === 'playing' && doublePhase === 'await_reveal' && doubleAttackerId === userId
+  const pickDoubleRevealSlot =
+    room?.status === 'playing' &&
+    doublePhase === 'await_reveal' &&
+    Boolean(doubleAttackerId) &&
+    doubleAttackerId !== userId
+  const doubleRevealLabel =
+    room?.double_reveal_slot != null && room?.double_reveal_digit
+      ? `ダブル開示: 左から ${room.double_reveal_slot} 桁目は ${room.double_reveal_digit}`
+      : null
+  const hasUnusedDouble =
+    Boolean(userId) && itemCards.some((c) => c.user_id === userId && c.item_kind === 'DOUBLE' && !c.used_at)
+  const canUseDouble =
+    room?.status === 'playing' &&
+    myTurn &&
+    doublePhase == null &&
+    hasUnusedDouble
+  const doubleCallHint =
+    doublePhase === 'first_call'
+      ? 'ダブル: 1 コール目'
+      : doublePhase === 'second_call'
+        ? 'ダブル: 2 コール目（このあと手番が相手に戻る）'
+        : null
   const hasMySecret = Boolean(mySecretDigits)
   const waitingForOpponentSecret =
     room && memberCount === 2 && room.status === 'waiting' && hasMySecret
@@ -434,7 +494,7 @@ export function App() {
             <div style={{ marginTop: '1rem', fontSize: '0.88rem', color: '#333' }}>
               <h2 style={{ fontSize: '1rem' }}>アイテム（マッチ通算・各 1 回）</h2>
               <p style={{ color: '#555', marginTop: 4 }}>
-                BO 中はゲームが変わっても使用済みは戻らない。効果はこれから実装予定。
+                BO 中はゲームが変わっても使用済みは戻らない。ダブルは手番に使える（連続 2 コール）。
               </p>
               {itemCards.length === 0 ? (
                 <p style={{ color: '#888' }}>カード行がまだ無いよ。`room_item_cards` のマイグレーションを当ててね。</p>
@@ -507,6 +567,9 @@ export function App() {
             <>
               <div style={{ marginTop: '1rem' }}>
                 <h2 style={{ fontSize: '1rem' }}>コール履歴</h2>
+                {doubleRevealLabel ? (
+                  <p style={{ fontSize: '0.9rem', color: '#0a5', marginBottom: 8 }}>{doubleRevealLabel}</p>
+                ) : null}
                 <ul style={{ paddingLeft: '1.2rem' }}>
                   {guesses.map((g) => (
                     <li key={g.id}>
@@ -516,9 +579,30 @@ export function App() {
                   ))}
                 </ul>
               </div>
-              {room.status === 'playing' && myTurn ? (
+              {room.status === 'playing' && waitingDoubleReveal ? (
+                <p style={{ marginTop: '1rem', color: '#444' }}>
+                  ダブル中。相手に「どの桁を開示するか」選んでもらってね。
+                </p>
+              ) : null}
+              {room.status === 'playing' && pickDoubleRevealSlot ? (
+                <div style={{ marginTop: '1rem' }}>
+                  <h2 style={{ fontSize: '1rem' }}>相手のダブル: 開示する桁</h2>
+                  <p style={{ fontSize: '0.88rem', color: '#555' }}>左から 1 … {dl} のどれかを選んでね。</p>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
+                    {Array.from({ length: dl }, (_, i) => i + 1).map((slot) => (
+                      <button key={slot} type="button" onClick={() => void handleDoubleRevealPick(slot)}>
+                        {slot} 桁目
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+              {room.status === 'playing' && canSubmitGuess ? (
                 <div style={{ marginTop: '1rem' }}>
                   <h2 style={{ fontSize: '1rem' }}>あなたの手番</h2>
+                  {doubleCallHint ? (
+                    <p style={{ fontSize: '0.88rem', color: '#555' }}>{doubleCallHint}</p>
+                  ) : null}
                   <input
                     inputMode="numeric"
                     placeholder={`${dl} 桁・重複なし`}
@@ -528,9 +612,19 @@ export function App() {
                   <button type="button" style={{ marginLeft: 8 }} onClick={() => void handleGuess()}>
                     コール
                   </button>
+                  {canUseDouble ? (
+                    <div style={{ marginTop: 12 }}>
+                      <button type="button" onClick={() => void handleDoubleStart()}>
+                        ダブルを使う（このターンでコール 2 連続。先に相手が開示桁を指定）
+                      </button>
+                    </div>
+                  ) : null}
                 </div>
               ) : null}
-              {room.status === 'playing' && !myTurn ? (
+              {room.status === 'playing' &&
+              !canSubmitGuess &&
+              !pickDoubleRevealSlot &&
+              !waitingDoubleReveal ? (
                 <p style={{ marginTop: '1rem', color: '#444' }}>相手の手番だよ</p>
               ) : null}
               {room.status === 'finished' ? (
