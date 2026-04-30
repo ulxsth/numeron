@@ -14,6 +14,9 @@ type Room = {
   created_by: string
   current_turn_user_id: string | null
   winner_user_id: string | null
+  match_wins_required: number
+  match_wins: Record<string, number>
+  current_game_index: number
 }
 
 type GuessRow = {
@@ -53,6 +56,8 @@ export function App() {
   const [secretInput, setSecretInput] = useState('')
   const [guessInput, setGuessInput] = useState('')
   const [createDigitLen, setCreateDigitLen] = useState<3 | 4>(4)
+  const [createMatchWins, setCreateMatchWins] = useState(1)
+  const [memberUserIds, setMemberUserIds] = useState<string[]>([])
   const [error, setError] = useState<string | null>(null)
 
   const refreshAll = useCallback(async () => {
@@ -88,6 +93,7 @@ export function App() {
     setGuesses((guessesRes.data as GuessRow[]) ?? [])
     setMySecretDigits(secretRes.data?.digits ?? null)
     setMemberCount(membersRes.data?.length ?? 0)
+    setMemberUserIds((membersRes.data ?? []).map((row) => row.user_id as string))
   }, [roomId, userId])
 
   useEffect(() => {
@@ -170,6 +176,7 @@ export function App() {
         short_code: code,
         status: 'waiting',
         digit_length: createDigitLen,
+        match_wins_required: createMatchWins,
       })
       .select()
       .single()
@@ -202,10 +209,22 @@ export function App() {
       setError('ルームが見つからない')
       return
     }
-    const { error: e2 } = await getSupabase().from('room_members').insert({ room_id: found.id, user_id: userId })
-    if (e2) {
-      setError(e2.message)
+    const { data: already, error: e1 } = await getSupabase()
+      .from('room_members')
+      .select('user_id')
+      .eq('room_id', found.id)
+      .eq('user_id', userId)
+      .maybeSingle()
+    if (e1) {
+      setError(e1.message)
       return
+    }
+    if (!already) {
+      const { error: e2 } = await getSupabase().from('room_members').insert({ room_id: found.id, user_id: userId })
+      if (e2) {
+        setError(e2.message)
+        return
+      }
     }
     setRoomId(found.id as string)
   }
@@ -259,6 +278,7 @@ export function App() {
     setRoom(null)
     setGuesses([])
     setMemberCount(0)
+    setMemberUserIds([])
     setMySecretDigits(null)
     setError(null)
   }
@@ -289,12 +309,17 @@ export function App() {
   const hasMySecret = Boolean(mySecretDigits)
   const waitingForOpponentSecret =
     room && memberCount === 2 && room.status === 'waiting' && hasMySecret
+  const winsReq = room?.match_wins_required ?? 1
+  const mw = room?.match_wins as Record<string, number> | undefined
+  const myMatchWins = userId && mw ? Number(mw[userId] ?? 0) : 0
+  const oppUid = memberUserIds.find((id) => id !== userId) ?? null
+  const oppMatchWins = oppUid && mw ? Number(mw[oppUid] ?? 0) : 0
 
   return (
     <main style={{ fontFamily: 'system-ui', padding: '1.5rem', maxWidth: 560 }}>
       <h1 style={{ fontSize: '1.25rem' }}>Numeron（第1段）</h1>
       <p style={{ color: '#555', fontSize: '0.9rem' }}>
-        双方向・交互コール。先に相手の番号を当てたら勝ち。
+        双方向・交互コール。マッチは先取（1〜10）で長さを決められる。
       </p>
 
       {error ? (
@@ -312,6 +337,19 @@ export function App() {
               <select value={createDigitLen} onChange={(e) => setCreateDigitLen(Number(e.target.value) as 3 | 4)}>
                 <option value={4}>4</option>
                 <option value={3}>3</option>
+              </select>
+            </label>
+            <label style={{ display: 'block', marginBottom: 8 }}>
+              マッチ先取（1 = 1 ゲームのみ、2 = 2 本先取…最大 10）{' '}
+              <select
+                value={createMatchWins}
+                onChange={(e) => setCreateMatchWins(Number(e.target.value))}
+              >
+                {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
               </select>
             </label>
             <button type="button" onClick={() => void handleCreateRoom()}>
@@ -338,6 +376,13 @@ export function App() {
           </p>
           <p style={{ fontSize: '0.9rem', color: '#444' }}>
             メンバー {memberCount} / 2 · 状態 {room?.status ?? '…'}
+            {room && winsReq > 1 ? (
+              <>
+                {' '}
+                · マッチ 先取 {winsReq} · ゲーム {room.current_game_index ?? 1} · 勝数 {myMatchWins}–
+                {oppMatchWins}
+              </>
+            ) : null}
           </p>
           <button type="button" style={{ marginTop: 8 }} onClick={leaveRoom}>
             別ルームへ
@@ -346,6 +391,11 @@ export function App() {
           {!hasMySecret && room ? (
             <div style={{ marginTop: '1rem' }}>
               <h2 style={{ fontSize: '1rem' }}>あなたの秘密 {dl} 桁</h2>
+              {room.status === 'waiting' && winsReq > 1 && (room.current_game_index ?? 1) > 1 ? (
+                <p style={{ fontSize: '0.85rem', color: '#555' }}>
+                  マッチ継続 · 第 {room.current_game_index} ゲーム。新しい秘密を登録してね。
+                </p>
+              ) : null}
               <input
                 inputMode="numeric"
                 placeholder={`${dl} 桁・重複なし`}

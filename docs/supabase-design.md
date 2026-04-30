@@ -37,7 +37,10 @@
 | `created_at` | `timestamptz` | |
 | `created_by` | `uuid` | 作成者 |
 | `current_turn_user_id` | `uuid` nullable | 交互コールの手番。開始条件（二人・秘密確定後）でセット |
-| `winner_user_id` | `uuid` nullable | 終了時に先に当てたプレイヤー |
+| `winner_user_id` | `uuid` nullable | 終了時に先に当てたプレイヤー（マッチ最終局の勝者＝マッチ勝者） |
+| `match_wins_required` | `smallint` | 先取 1〜10（`1`＝従来の 1 ゲームのみ） |
+| `match_wins` | `jsonb` | ユーザー ID 文字列キー・ゲーム単位の勝ち数の累積 |
+| `current_game_index` | `int` | マッチ内の現在のゲーム番号（1 始まり） |
 
 ### 3.2 `room_members`
 
