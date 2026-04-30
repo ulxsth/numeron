@@ -29,6 +29,32 @@ type GuessRow = {
   created_at: string
 }
 
+const ITEM_KINDS = ['DOUBLE', 'HIGHLOW', 'TARGET', 'SLASH', 'SHUFFLE', 'CHANGE'] as const
+type ItemKind = (typeof ITEM_KINDS)[number]
+
+const ITEM_LABELS: Record<ItemKind, string> = {
+  DOUBLE: 'ダブル',
+  HIGHLOW: 'HIGH&LOW',
+  TARGET: 'ターゲット',
+  SLASH: 'スラッシュ',
+  SHUFFLE: 'シャッフル',
+  CHANGE: 'チェンジ',
+}
+
+type ItemCardRow = {
+  room_id: string
+  user_id: string
+  item_kind: ItemKind
+  used_at: string | null
+}
+
+function orderedItemSlots(rows: ItemCardRow[], uid: string): { kind: ItemKind; used: boolean }[] {
+  return ITEM_KINDS.map((kind) => {
+    const row = rows.find((r) => r.user_id === uid && r.item_kind === kind)
+    return { kind, used: Boolean(row?.used_at) }
+  })
+}
+
 function randomShortCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
   let s = ''
@@ -58,11 +84,12 @@ export function App() {
   const [createDigitLen, setCreateDigitLen] = useState<3 | 4>(4)
   const [createMatchWins, setCreateMatchWins] = useState(1)
   const [memberUserIds, setMemberUserIds] = useState<string[]>([])
+  const [itemCards, setItemCards] = useState<ItemCardRow[]>([])
   const [error, setError] = useState<string | null>(null)
 
   const refreshAll = useCallback(async () => {
     if (!roomId || !userId) return
-    const [roomRes, guessesRes, secretRes, membersRes] = await Promise.all([
+    const [roomRes, guessesRes, secretRes, membersRes, cardsRes] = await Promise.all([
       getSupabase().from('rooms').select('*').eq('id', roomId).single(),
       getSupabase().from('guesses').select('*').eq('room_id', roomId).order('created_at', { ascending: true }),
       getSupabase()
@@ -72,6 +99,7 @@ export function App() {
         .eq('user_id', userId)
         .maybeSingle(),
       getSupabase().from('room_members').select('user_id').eq('room_id', roomId),
+      getSupabase().from('room_item_cards').select('*').eq('room_id', roomId),
     ])
     if (roomRes.error) {
       setError(roomRes.error.message)
@@ -89,11 +117,16 @@ export function App() {
       setError(membersRes.error.message)
       return
     }
+    if (cardsRes.error) {
+      setError(cardsRes.error.message)
+      return
+    }
     setRoom(roomRes.data as Room)
     setGuesses((guessesRes.data as GuessRow[]) ?? [])
     setMySecretDigits(secretRes.data?.digits ?? null)
     setMemberCount(membersRes.data?.length ?? 0)
     setMemberUserIds((membersRes.data ?? []).map((row) => row.user_id as string))
+    setItemCards((cardsRes.data as ItemCardRow[]) ?? [])
   }, [roomId, userId])
 
   useEffect(() => {
@@ -147,6 +180,7 @@ export function App() {
     if (!roomId || !isSupabaseConfigured) return
     const filterRoom = `id=eq.${roomId}`
     const filterGuess = `room_id=eq.${roomId}`
+    const filterCards = `room_id=eq.${roomId}`
     const ch = getSupabase()
       .channel(`public:${roomId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'rooms', filter: filterRoom }, () => {
@@ -155,6 +189,13 @@ export function App() {
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'guesses', filter: filterGuess },
+        () => {
+          void refreshAll()
+        },
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'room_item_cards', filter: filterCards },
         () => {
           void refreshAll()
         },
@@ -279,6 +320,7 @@ export function App() {
     setGuesses([])
     setMemberCount(0)
     setMemberUserIds([])
+    setItemCards([])
     setMySecretDigits(null)
     setError(null)
   }
@@ -387,6 +429,49 @@ export function App() {
           <button type="button" style={{ marginTop: 8 }} onClick={leaveRoom}>
             別ルームへ
           </button>
+
+          {memberCount >= 2 && userId ? (
+            <div style={{ marginTop: '1rem', fontSize: '0.88rem', color: '#333' }}>
+              <h2 style={{ fontSize: '1rem' }}>アイテム（マッチ通算・各 1 回）</h2>
+              <p style={{ color: '#555', marginTop: 4 }}>
+                BO 中はゲームが変わっても使用済みは戻らない。効果はこれから実装予定。
+              </p>
+              {itemCards.length === 0 ? (
+                <p style={{ color: '#888' }}>カード行がまだ無いよ。`room_item_cards` のマイグレーションを当ててね。</p>
+              ) : (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.25rem', marginTop: 8 }}>
+                  <div>
+                    <div style={{ fontWeight: 600, marginBottom: 4 }}>あなた</div>
+                    <ul style={{ margin: 0, paddingLeft: '1.1rem' }}>
+                      {orderedItemSlots(itemCards, userId).map(({ kind, used }) => (
+                        <li key={kind} style={{ color: used ? '#888' : undefined }}>
+                          {ITEM_LABELS[kind]}
+                          {used ? ' · 使用済' : ' · 未使用'}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  {oppUid ? (
+                    <div>
+                      <div style={{ fontWeight: 600, marginBottom: 4 }}>相手</div>
+                      <ul style={{ margin: 0, paddingLeft: '1.1rem' }}>
+                        {orderedItemSlots(itemCards, oppUid).map(({ kind, used }) => (
+                          <li key={kind} style={{ color: used ? '#888' : undefined }}>
+                            {ITEM_LABELS[kind]}
+                            {used ? ' · 使用済' : ' · 未使用'}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
+                </div>
+              )}
+            </div>
+          ) : memberCount === 1 ? (
+            <p style={{ marginTop: '0.75rem', fontSize: '0.88rem', color: '#666' }}>
+              アイテムカードは対戦相手が入ったあと 6 種×1 枚ずつ配られる。
+            </p>
+          ) : null}
 
           {!hasMySecret && room ? (
             <div style={{ marginTop: '1rem' }}>

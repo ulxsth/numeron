@@ -92,12 +92,26 @@
 
 ゲーム開始条件の例: メンバーが 2 名かつ **両方の `room_secrets` が揃った**ら `playing` とし、先攻を `created_by` または固定ルールで `current_turn_user_id` に入れる。
 
+### 3.5 `room_item_cards`
+
+**BO マッチ通算**の各プレイヤーのアイテム在庫（番組の 6 種に対応）。ゲームが変わっても **使用済みはリセットしない**（秘密・`guesses` のみリセット）。2 人目参加時に `room_members` の AFTER INSERT トリガーで各行を 6 種ぶん挿入。
+
+| 列 | 型 | 説明 |
+|----|----|------|
+| `room_id` | `uuid` | FK |
+| `user_id` | `uuid` | カードの所有者 |
+| `item_kind` | `text` | `DOUBLE` / `HIGHLOW` / `TARGET` / `SLASH` / `SHUFFLE` / `CHANGE` |
+| `used_at` | `timestamptz` nullable | 未使用は `null`。使用時にサーバ側がセット予定 |
+
+主キー: `(room_id, user_id, item_kind)`。
+
 ---
 
 ## 4. Row Level Security（意図）
 
 - 全テーブルで RLS を有効化。
 - **`room_members` に行があるユーザーだけ** が、その `room_id` の `rooms` / `guesses` を読める。
+- `room_item_cards` は **メンバーならルーム内の全行を読める**（相手の使用状況の表示用）。書き込みはサーバ（トリガー／将来の RPC）のみ。
 - `room_secrets` は **自分の行だけ** 読める・書ける。
 - `guesses` の INSERT は **自分の番のとき**（上記）かつ `guesser_id = auth.uid()`。
 
@@ -107,8 +121,8 @@
 
 ## 5. Realtime（Postgres Changes）
 
-- `guesses` と `rooms` を `supabase_realtime` publication に追加。
-- クライアントは `postgres_changes` で **新しいコール・ルーム状態**を購読。
+- `guesses` と `rooms` と `room_item_cards` を `supabase_realtime` publication に追加。
+- クライアントは `postgres_changes` で **新しいコール・ルーム状態・アイテムカード**を購読。
 - 初回・再接続時は **`select` で履歴／状態を再取得**。
 
 ---
