@@ -1,12 +1,10 @@
 type Props = {
   roomCode: string
   codeCopiedHint: boolean
-  aloneInLobby: boolean
-  twoInLobby: boolean
   onCopy: () => void
 }
 
-export function RoomCodeCard({ roomCode, codeCopiedHint, aloneInLobby, twoInLobby, onCopy }: Props) {
+export function RoomCodeCard({ roomCode, codeCopiedHint, onCopy }: Props) {
   return (
     <div
       style={{

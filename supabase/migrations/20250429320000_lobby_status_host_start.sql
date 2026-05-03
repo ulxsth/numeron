@@ -1,4 +1,4 @@
--- ロビー状態 lobby を追加。2 人そろうまで秘密不可。ホストが開始すると waiting（ナンバー設定）へ。
+-- ロビー状態 lobby を追加。2 人そろうまでナンバー不可。ホストが開始すると waiting（ナンバー設定）へ。
 
 alter table public.rooms drop constraint if exists rooms_status_check;
 
@@ -93,7 +93,7 @@ begin
 end;
 $$;
 
--- lobby 中は秘密の書き込みを禁止（playing 中の UPDATE は CHANGE 等で必要）
+-- lobby 中はナンバーの書き込みを禁止（playing 中の UPDATE は CHANGE 等で必要）
 create or replace function public.room_secrets_block_in_lobby()
 returns trigger
 language plpgsql

@@ -19,7 +19,7 @@ export function App() {
 
   return (
     <main style={{ fontFamily: 'system-ui', padding: '1.5rem', maxWidth: 560 }}>
-      <h1 style={{ fontSize: '1.25rem' }}>Numeron</h1>
+      <h1 style={{ fontSize: '1.25rem' }}>Numer0n</h1>
       {g.error ? (
         <p style={{ color: '#b00', marginTop: '1rem' }} role="alert">
           {g.error}

@@ -22,7 +22,6 @@ type Derived = {
   oppMatchWins: number
   timeline: TimelineEntry[]
   changeSlotSafe: number
-  aloneInLobby: boolean
   twoInLobby: boolean
   isRoomHost: boolean
   roomCode: string
@@ -118,7 +117,6 @@ export function RoomView({
     oppMatchWins,
     timeline,
     changeSlotSafe,
-    aloneInLobby,
     twoInLobby,
     isRoomHost,
     roomCode,
@@ -139,13 +137,7 @@ export function RoomView({
         もどる
       </button>
       {showRoomCode ? (
-        <RoomCodeCard
-          roomCode={roomCode}
-          codeCopiedHint={codeCopiedHint}
-          aloneInLobby={aloneInLobby}
-          twoInLobby={twoInLobby}
-          onCopy={copyRoomCode}
-        />
+        <RoomCodeCard roomCode={roomCode} codeCopiedHint={codeCopiedHint} onCopy={copyRoomCode} />
       ) : null}
       <p style={{ fontSize: '0.9rem', color: '#444' }}>
         メンバー {memberCount} / 2 · {roomStatusLabel(room?.status)}

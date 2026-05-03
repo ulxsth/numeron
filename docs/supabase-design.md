@@ -7,7 +7,7 @@
 ## 1. スコープ
 
 - 2 プレイヤーが **別クライアント** から同一ルームに参加する。
-- **双方がそれぞれ秘密の N 桁を持つ**（Numer0n と同型の双方向）。**交互にコール**し、コールに対する Hit/Blow は **相手の秘密**を基準に返す。
+- **双方がそれぞれナンバーの N 桁を持つ**（Numer0n と同型の双方向）。**交互にコール**し、コールに対する Hit/Blow は **相手のナンバー**を基準に返す。
 - **先に相手の番号を当てたプレイヤーが勝ち**（`hit = N` が自分のコールで成立した时刻）。
 - ゲーム状態と手履歴の **正本は Postgres**。Realtime は通知用（取りこぼしは第2段で方針化、`requirements.md` の信頼性参照）。
 
@@ -36,7 +36,7 @@
 | `digit_length` | `smallint` | 3 または 4 |
 | `created_at` | `timestamptz` | |
 | `created_by` | `uuid` | 作成者 |
-| `current_turn_user_id` | `uuid` nullable | 交互コールの手番。開始条件（二人・秘密確定後）でセット |
+| `current_turn_user_id` | `uuid` nullable | 交互コールの手番。開始条件（二人・ナンバー確定後）でセット |
 | `winner_user_id` | `uuid` nullable | 終了時に先に当てたプレイヤー（マッチ最終局の勝者＝マッチ勝者） |
 | `match_wins_required` | `smallint` | 先取 1〜10（`1`＝従来の 1 ゲームのみ） |
 | `match_wins` | `jsonb` | ユーザー ID 文字列キー・ゲーム単位の勝ち数の累積 |
@@ -54,7 +54,7 @@
 
 ### 3.2 `room_members`
 
-**対称な二人**。役割は「秘密をそれぞれ持つプレイヤー」で揃える（`secret_holder` / `guesser` の非対称は廃止）。
+**対称な二人**。役割は「ナンバーをそれぞれ持つプレイヤー」で揃える（`secret_holder` / `guesser` の非対称は廃止）。
 
 | 列 | 型 | 説明 |
 |----|----|------|
@@ -71,7 +71,7 @@
 | 列 | 型 | 説明 |
 |----|----|------|
 | `room_id` | `uuid` | FK |
-| `user_id` | `uuid` | 秘密の所有者 |
+| `user_id` | `uuid` | ナンバーの所有者 |
 | `digits` | `text` | 重複なし・桁揃い（先頭 0 可） |
 
 主キー: `(room_id, user_id)`。
@@ -104,7 +104,7 @@
 
 ### 3.5 `room_item_cards`
 
-**BO マッチ通算**の各プレイヤーのアイテム在庫（番組の 6 種に対応）。ゲームが変わっても **使用済みはリセットしない**（秘密・`guesses` のみリセット）。2 人目参加時に `room_members` の AFTER INSERT トリガーで各行を 6 種ぶん挿入。
+**BO マッチ通算**の各プレイヤーのアイテム在庫（番組の 6 種に対応）。ゲームが変わっても **使用済みはリセットしない**（ナンバー・`guesses` のみリセット）。2 人目参加時に `room_members` の AFTER INSERT トリガーで各行を 6 種ぶん挿入。
 
 | 列 | 型 | 説明 |
 |----|----|------|
@@ -129,8 +129,8 @@ RPC（すべて `SECURITY DEFINER`、手番・`double_phase is null`・カード
 | `item_highlow_use(room)` | 相手各桁の H(5–9)/L(0–4) を左から配列で記録。 |
 | `item_target_use(room, digit)` | 指定数字の含有と、含む場合は左からの桁位置。 |
 | `item_slash_use(room)` | 相手の min/max/差、桁を昇順に並べた文字列。 |
-| `item_shuffle_use(room)` | 自分の秘密の桁順をランダムに入れ替え。 |
-| `item_change_use(room, slot, new_digit)` | 自分の秘密の 1 桁を他桁と重複しない数字に変更。 |
+| `item_shuffle_use(room)` | 自分のナンバーの桁順をランダムに入れ替え。 |
+| `item_change_use(room, slot, new_digit)` | 自分のナンバーの 1 桁を他桁と重複しない数字に変更。 |
 
 `DOUBLE` は既存の `double_start` / `double_submit_reveal_slot` のまま。
 

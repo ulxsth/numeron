@@ -530,7 +530,6 @@ export function useNumeronGame() {
     })
 
     const changeSlotSafe = Math.min(Math.max(1, changeSlot), dl)
-    const aloneInLobby = Boolean(room && room.status === 'lobby' && memberCount === 1)
     const twoInLobby = Boolean(room && room.status === 'lobby' && memberCount === 2)
     const isRoomHost = Boolean(room && userId && room.created_by === userId)
     const roomCode = room?.short_code ?? ''
@@ -555,7 +554,6 @@ export function useNumeronGame() {
       oppMatchWins,
       timeline,
       changeSlotSafe,
-      aloneInLobby,
       twoInLobby,
       isRoomHost,
       roomCode,

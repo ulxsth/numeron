@@ -27,10 +27,10 @@ export function SecretPanels({
     <>
       {!hasMySecret && room.status === 'waiting' ? (
         <div style={{ marginTop: '1rem' }}>
-          <h2 style={{ fontSize: '1rem' }}>あなたの秘密 {dl} 桁</h2>
+          <h2 style={{ fontSize: '1rem' }}>あなたのナンバー（{dl} 桁）</h2>
           {room.status === 'waiting' && winsReq > 1 && (room.current_game_index ?? 1) > 1 ? (
             <p style={{ fontSize: '0.85rem', color: '#555' }}>
-              マッチ継続 · 第 {room.current_game_index} ゲーム。新しい秘密を登録してね。
+              マッチ継続 · 第 {room.current_game_index} ゲーム。新しいナンバーを登録してね。
             </p>
           ) : null}
           <input
@@ -50,7 +50,7 @@ export function SecretPanels({
           {memberCount < 2
             ? '相手の参加を待ってる'
             : waitingForOpponentSecret
-              ? '相手の秘密登録を待ってる'
+              ? '相手のナンバー登録を待ってる'
               : '開始待ち'}
         </p>
       ) : null}

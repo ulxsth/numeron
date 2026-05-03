@@ -1,4 +1,4 @@
--- BO 制マッチ: 先取 W 本（1〜10）。1 ゲームごとに秘密・コール履歴をリセットし、手番の先攻はゲーム番号で交互。
+-- BO 制マッチ: 先取 W 本（1〜10）。1 ゲームごとにナンバー・コール履歴をリセットし、手番の先攻はゲーム番号で交互。
 
 alter table public.rooms
   add column match_wins_required smallint not null default 1

@@ -1,6 +1,6 @@
 import { ITEM_LABELS } from '../domain/constants'
 import type { Room, TimelineEntry } from '../domain/types'
-import { formatItemEventLine } from '../domain/utils'
+import { formatGuessLogLine, formatItemEventLine } from '../domain/utils'
 
 type Props = {
   room: Room
@@ -79,10 +79,7 @@ export function MatchPanel({
         <ul style={{ paddingLeft: '1.2rem' }}>
           {timeline.map((t) =>
             t.kind === 'g' ? (
-              <li key={`g-${t.guess.id}`}>
-                {t.guess.digits} → Hit {t.guess.hit} / Blow {t.guess.blow}
-                {t.guess.guesser_id === userId ? '（あなた）' : ''}
-              </li>
+              <li key={`g-${t.guess.id}`}>{formatGuessLogLine(t.guess, userId)}</li>
             ) : (
               <li key={`i-${t.ev.id}`} style={{ color: '#274' }}>
                 {formatItemEventLine(t.ev, userId, t.secretPayload)}

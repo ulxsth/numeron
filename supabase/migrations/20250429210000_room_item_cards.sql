@@ -1,4 +1,4 @@
--- マッチ（BO）通算: 各プレイヤーが 6 種アイテムをそれぞれ 1 回まで。ゲーム間では使用済みを引き継ぐ（秘密・コールのみリセット）。
+-- マッチ（BO）通算: 各プレイヤーが 6 種アイテムをそれぞれ 1 回まで。ゲーム間では使用済みを引き継ぐ（ナンバー・コールのみリセット）。
 
 create table public.room_item_cards (
   room_id uuid not null references public.rooms (id) on delete cascade,

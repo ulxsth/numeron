@@ -23,7 +23,7 @@
 
 - Supabase クライアント生成（環境変数は `supabase-design.md` 参照）。
 - 匿名ログイン → ルーム作成／参加（`short_code` または URL 共有）。
-- **二人とも自分の秘密を登録** → 揃ったら **交互コール**（手番は `rooms.current_turn_user_id` 等、`supabase-design.md` 参照）。
+- **二人とも自分のナンバーを登録** → 揃ったら **交互コール**（手番は `rooms.current_turn_user_id` 等、`supabase-design.md` 参照）。
 - **書き込みは DB 正、表示は Changes + 初回／フォールバックで `select`**。
 - 失敗時は **エラー表示**（成功の Silent フォールバックはしない、`requirements.md` どおり）。
 
@@ -57,7 +57,7 @@
 
 - ルート: `pnpm lint` · `pnpm build` · `pnpm test`（core の Vitest を含む）。
 - ローカル DB: **Docker 起動後** `supabase start` または `supabase db reset` でマイグレーションが通ること。`.env` は `.env.example` を参考に `supabase status` の URL / anon key を設定。
-- 手動: 2 ウィンドウでルーム作成→参加→両者秘密→交互コール→勝敗。
+- 手動: 2 ウィンドウでルーム作成→参加→両者ナンバー→交互コール→勝敗。
 
 ---
 

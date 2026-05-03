@@ -326,7 +326,7 @@ $$;
 revoke all on function public.item_slash_use(uuid) from public;
 grant execute on function public.item_slash_use(uuid) to authenticated;
 
--- --- SHUFFLE: 自分の秘密の並びをランダムに入れ替え -----------------------------------
+-- --- SHUFFLE: 自分のナンバーの並びをランダムに入れ替え -----------------------------------
 
 create or replace function public.item_shuffle_use(p_room_id uuid)
 returns jsonb
@@ -376,7 +376,7 @@ $$;
 revoke all on function public.item_shuffle_use(uuid) from public;
 grant execute on function public.item_shuffle_use(uuid) to authenticated;
 
--- --- CHANGE: 自分の秘密の 1 桁を、他桁と重複しない別の数字に差し替え ---------------
+-- --- CHANGE: 自分のナンバーの 1 桁を、他桁と重複しない別の数字に差し替え ---------------
 
 create or replace function public.item_change_use(
   p_room_id uuid,

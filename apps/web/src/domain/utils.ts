@@ -1,6 +1,6 @@
 import { DigitStringError } from '@numeron/core'
-import { ITEM_KINDS, type ItemKind } from './constants'
-import type { ItemCardRow, ItemEventRow } from './types'
+import { ITEM_KINDS, ITEM_LABELS, type ItemKind } from './constants'
+import type { GuessRow, ItemCardRow, ItemEventRow } from './types'
 
 export function orderedItemSlots(rows: ItemCardRow[], uid: string): { kind: ItemKind; used: boolean }[] {
   return ITEM_KINDS.map((kind) => {
@@ -39,46 +39,72 @@ export function roomStatusLabel(status: string | undefined): string {
   }
 }
 
-/** アイテムイベントのテキストを生成 */
+const LOG_HIDDEN = '—'
+
+export function formatLogActorTag(viewerId: string, actorId: string): '[自分]' | '[相手]' {
+  return actorId === viewerId ? '[自分]' : '[相手]'
+}
+
+function formatTimelineLine(tag: '[自分]' | '[相手]', subject: string, result: string): string {
+  return `${tag} ${subject} → ${result}`
+}
+
+/** コール行: `[自分] 123 → Hit 1 / Blow 2` */
+export function formatGuessLogLine(guess: GuessRow, viewerId: string): string {
+  const tag = formatLogActorTag(viewerId, guess.guesser_id)
+  return formatTimelineLine(tag, guess.digits, `Hit ${guess.hit} / Blow ${guess.blow}`)
+}
+
+/** アイテムログ: `[自分] HIGH&LOW → HLH` */
 export function formatItemEventLine(
   ev: ItemEventRow,
   viewerId: string,
   secretPayload: Record<string, unknown> | null,
 ): string {
+  const tag = formatLogActorTag(viewerId, ev.actor_id)
   const you = ev.actor_id === viewerId
-  const who = you ? 'あなた' : '相手'
+
   switch (ev.item_kind) {
     case 'HIGHLOW': {
+      const subject = ITEM_LABELS.HIGHLOW
       if (you && secretPayload?.levels && Array.isArray(secretPayload.levels)) {
-        return `HIGH&LOW（${who}）→ ${(secretPayload.levels as string[]).join('')}`
+        return formatTimelineLine(tag, subject, (secretPayload.levels as string[]).join(''))
       }
-      return `HIGH&LOW（${who}）`
+      return formatTimelineLine(tag, subject, LOG_HIDDEN)
     }
     case 'TARGET': {
       const q = ev.public_data.queried_digit
-      const base =
-        typeof q === 'number' || typeof q === 'string' ? `TARGET ${q}（${who}）` : `TARGET（${who}）`
+      const subject =
+        typeof q === 'number' || typeof q === 'string' ? `${ITEM_LABELS.TARGET} ${q}` : ITEM_LABELS.TARGET
       if (you && secretPayload && typeof secretPayload.contains === 'boolean') {
         if (secretPayload.contains && typeof secretPayload.slot === 'number') {
-          return `${base} → 左から ${secretPayload.slot} 桁目`
+          return formatTimelineLine(tag, subject, `含む・左から ${secretPayload.slot} 桁目`)
         }
-        return `${base} → 含まない`
+        return formatTimelineLine(tag, subject, '含まない')
       }
-      return base
+      return formatTimelineLine(tag, subject, LOG_HIDDEN)
     }
     case 'SLASH': {
+      const subject = ITEM_LABELS.SLASH
       if (you && secretPayload && typeof secretPayload.spread === 'number') {
-        return `SLASH（${who}）→ MAX - MIN = ${String(secretPayload.spread)}`
+        return formatTimelineLine(tag, subject, `差 ${String(secretPayload.spread)}`)
       }
-      return `SLASH（${who}）`
+      return formatTimelineLine(tag, subject, LOG_HIDDEN)
     }
-    case 'SHUFFLE':
-      return `SHUFFLE（${who}）`
+    case 'SHUFFLE': {
+      const subject = ITEM_LABELS.SHUFFLE
+      const result = you ? '自分の並びを変更' : '相手の並びを変更'
+      return formatTimelineLine(tag, subject, result)
+    }
     case 'CHANGE': {
       const sl = ev.public_data.slot
-      return `CHANGE（${who}${typeof sl === 'number' ? ` · ${sl} 桁目` : ''}）`
+      const subject =
+        typeof sl === 'number' ? `${ITEM_LABELS.CHANGE} · ${sl} 桁目` : ITEM_LABELS.CHANGE
+      return formatTimelineLine(tag, subject, LOG_HIDDEN)
     }
-    default:
-      return `${ev.item_kind}（${who}）`
+    default: {
+      const k = ev.item_kind as string
+      return formatTimelineLine(tag, k, LOG_HIDDEN)
+    }
   }
 }
