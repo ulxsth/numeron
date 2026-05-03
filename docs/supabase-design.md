@@ -111,6 +111,25 @@
 
 主キー: `(room_id, user_id, item_kind)`。
 
+### 3.6 `room_item_events` / `room_item_event_secrets`
+
+| テーブル | 役割 |
+|----------|------|
+| `room_item_events` | アイテム使用の公開ログ。`item_kind` は `DOUBLE` 除く 5 種。`public_data` は全員が見てよいメタ（例: ターゲットで質問した数字）。 |
+| `room_item_event_secrets` | 開示結果のうち**実行者だけ**が読む行（`viewer_id = actor_id`）。RLS で他人からは見えない。 |
+
+RPC（すべて `SECURITY DEFINER`、手番・`double_phase is null`・カード未使用を検証し、実行後に手番を相手へ）:
+
+| RPC | 内容 |
+|-----|------|
+| `item_highlow_use(room)` | 相手各桁の H(5–9)/L(0–4) を左から配列で記録。 |
+| `item_target_use(room, digit)` | 指定数字の含有と、含む場合は左からの桁位置。 |
+| `item_slash_use(room)` | 相手の min/max/差、桁を昇順に並べた文字列。 |
+| `item_shuffle_use(room)` | 自分の秘密の桁順をランダムに入れ替え。 |
+| `item_change_use(room, slot, new_digit)` | 自分の秘密の 1 桁を他桁と重複しない数字に変更。 |
+
+`DOUBLE` は既存の `double_start` / `double_submit_reveal_slot` のまま。
+
 ---
 
 ## 4. Row Level Security（意図）
@@ -118,6 +137,8 @@
 - 全テーブルで RLS を有効化。
 - **`room_members` に行があるユーザーだけ** が、その `room_id` の `rooms` / `guesses` を読める。
 - `room_item_cards` は **メンバーならルーム内の全行を読める**（相手の使用状況の表示用）。書き込みはサーバ（トリガー／将来の RPC）のみ。
+- `room_item_events` はルームメンバーが **SELECT**。INSERT は RPC のみ（クライアント直書きなし）。
+- `room_item_event_secrets` は **`viewer_id = auth.uid()` の行だけ SELECT**（開示内容は使用者のみ）。
 - `room_secrets` は **自分の行だけ** 読める・書ける。
 - `guesses` の INSERT は **自分の番のとき**（上記）かつ `guesser_id = auth.uid()`。
 
@@ -127,8 +148,8 @@
 
 ## 5. Realtime（Postgres Changes）
 
-- `guesses` と `rooms` と `room_item_cards` を `supabase_realtime` publication に追加。
-- クライアントは `postgres_changes` で **新しいコール・ルーム状態・アイテムカード**を購読。
+- `guesses` と `rooms` と `room_item_cards` と `room_item_events` を `supabase_realtime` publication に追加。
+- クライアントは `postgres_changes` で **新しいコール・ルーム状態・アイテムカード・アイテム公開ログ**を購読。
 - 初回・再接続時は **`select` で履歴／状態を再取得**。
 
 ---

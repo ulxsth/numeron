@@ -52,6 +52,19 @@ type ItemCardRow = {
   used_at: string | null
 }
 
+type ItemEventRow = {
+  id: string
+  room_id: string
+  actor_id: string
+  item_kind: Exclude<ItemKind, 'DOUBLE'>
+  public_data: Record<string, unknown>
+  created_at: string
+}
+
+type TimelineEntry =
+  | { sortKey: string; kind: 'g'; guess: GuessRow }
+  | { sortKey: string; kind: 'i'; ev: ItemEventRow; secretPayload: Record<string, unknown> | null }
+
 function orderedItemSlots(rows: ItemCardRow[], uid: string): { kind: ItemKind; used: boolean }[] {
   return ITEM_KINDS.map((kind) => {
     const row = rows.find((r) => r.user_id === uid && r.item_kind === kind)
@@ -74,6 +87,53 @@ function errMessage(e: unknown): string {
   return String(e)
 }
 
+// アイテムイベントのテキストを生成
+function formatItemEventLine(
+  ev: ItemEventRow,
+  viewerId: string,
+  secretPayload: Record<string, unknown> | null,
+): string {
+  const you = ev.actor_id === viewerId
+  const who = you ? 'あなた' : '相手'
+  switch (ev.item_kind) {
+    case 'HIGHLOW': {
+      if (you && secretPayload?.levels && Array.isArray(secretPayload.levels)) {
+        return `HIGH&LOW（${who}）→ ${(secretPayload.levels as string[]).join('')}`
+      }
+      return `HIGH&LOW（${who}）`
+    }
+    case 'TARGET': {
+      const q = ev.public_data.queried_digit
+      const base =
+        typeof q === 'number' || typeof q === 'string' ? `ターゲット ${q}（${who}）` : `ターゲット（${who}）`
+      if (you && secretPayload && typeof secretPayload.contains === 'boolean') {
+        if (secretPayload.contains && typeof secretPayload.slot === 'number') {
+          return `${base} → 含む · 左から ${secretPayload.slot} 桁目`
+        }
+        return `${base} → 含まない`
+      }
+      return base
+    }
+    case 'SLASH': {
+      if (you && secretPayload && typeof secretPayload.spread === 'number') {
+        const mn = secretPayload.min
+        const mx = secretPayload.max
+        const sd = secretPayload.sorted_digits
+        return `スラッシュ（${who}）→ min ${String(mn)} max ${String(mx)} 差 ${String(secretPayload.spread)} · 昇順 ${String(sd ?? '')}`
+      }
+      return `スラッシュ（${who}）`
+    }
+    case 'SHUFFLE':
+      return `シャッフル（${who}・自分の並び変更）`
+    case 'CHANGE': {
+      const sl = ev.public_data.slot
+      return `チェンジ（${who}${typeof sl === 'number' ? ` · ${sl} 桁目` : ''}）`
+    }
+    default:
+      return `${ev.item_kind}（${who}）`
+  }
+}
+
 export function App() {
   const [booting, setBooting] = useState(true)
   const [userId, setUserId] = useState<string | null>(null)
@@ -89,11 +149,16 @@ export function App() {
   const [createMatchWins, setCreateMatchWins] = useState(1)
   const [memberUserIds, setMemberUserIds] = useState<string[]>([])
   const [itemCards, setItemCards] = useState<ItemCardRow[]>([])
+  const [itemEvents, setItemEvents] = useState<ItemEventRow[]>([])
+  const [itemSecretPayloads, setItemSecretPayloads] = useState<Record<string, Record<string, unknown>>>({})
+  const [targetDigitInput, setTargetDigitInput] = useState('')
+  const [changeSlot, setChangeSlot] = useState(1)
+  const [changeNewDigit, setChangeNewDigit] = useState('')
   const [error, setError] = useState<string | null>(null)
 
   const refreshAll = useCallback(async () => {
     if (!roomId || !userId) return
-    const [roomRes, guessesRes, secretRes, membersRes, cardsRes] = await Promise.all([
+    const [roomRes, guessesRes, secretRes, membersRes, cardsRes, eventsRes] = await Promise.all([
       getSupabase().from('rooms').select('*').eq('id', roomId).single(),
       getSupabase().from('guesses').select('*').eq('room_id', roomId).order('created_at', { ascending: true }),
       getSupabase()
@@ -104,6 +169,11 @@ export function App() {
         .maybeSingle(),
       getSupabase().from('room_members').select('user_id').eq('room_id', roomId),
       getSupabase().from('room_item_cards').select('*').eq('room_id', roomId),
+      getSupabase()
+        .from('room_item_events')
+        .select('*')
+        .eq('room_id', roomId)
+        .order('created_at', { ascending: true }),
     ])
     if (roomRes.error) {
       setError(roomRes.error.message)
@@ -125,12 +195,37 @@ export function App() {
       setError(cardsRes.error.message)
       return
     }
+    if (eventsRes.error) {
+      setError(eventsRes.error.message)
+      return
+    }
+    const evs = (eventsRes.data as ItemEventRow[]) ?? []
     setRoom(roomRes.data as Room)
     setGuesses((guessesRes.data as GuessRow[]) ?? [])
     setMySecretDigits(secretRes.data?.digits ?? null)
     setMemberCount(membersRes.data?.length ?? 0)
     setMemberUserIds((membersRes.data ?? []).map((row) => row.user_id as string))
     setItemCards((cardsRes.data as ItemCardRow[]) ?? [])
+    setItemEvents(evs)
+
+    const evIds = evs.map((e) => e.id)
+    if (evIds.length === 0) {
+      setItemSecretPayloads({})
+    } else {
+      const secRes = await getSupabase()
+        .from('room_item_event_secrets')
+        .select('event_id, payload')
+        .in('event_id', evIds)
+      if (secRes.error) {
+        setError(secRes.error.message)
+        return
+      }
+      const map: Record<string, Record<string, unknown>> = {}
+      for (const row of (secRes.data as { event_id: string; payload: Record<string, unknown> }[]) ?? []) {
+        map[row.event_id] = row.payload
+      }
+      setItemSecretPayloads(map)
+    }
   }, [roomId, userId])
 
   useEffect(() => {
@@ -185,6 +280,7 @@ export function App() {
     const filterRoom = `id=eq.${roomId}`
     const filterGuess = `room_id=eq.${roomId}`
     const filterCards = `room_id=eq.${roomId}`
+    const filterItemEvents = `room_id=eq.${roomId}`
     const ch = getSupabase()
       .channel(`public:${roomId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'rooms', filter: filterRoom }, () => {
@@ -200,6 +296,13 @@ export function App() {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'room_item_cards', filter: filterCards },
+        () => {
+          void refreshAll()
+        },
+      )
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'room_item_events', filter: filterItemEvents },
         () => {
           void refreshAll()
         },
@@ -343,6 +446,77 @@ export function App() {
     await refreshAll()
   }
 
+  async function handleItemHighlow() {
+    setError(null)
+    if (!roomId) return
+    const { error: e } = await getSupabase().rpc('item_highlow_use', { p_room_id: roomId })
+    if (e) {
+      setError(e.message)
+      return
+    }
+    await refreshAll()
+  }
+
+  async function handleItemTarget() {
+    setError(null)
+    if (!roomId) return
+    const d = Number.parseInt(targetDigitInput.trim(), 10)
+    if (!Number.isInteger(d) || d < 0 || d > 9) {
+      setError('ターゲットは 0〜9 の 1 桁で入れてね')
+      return
+    }
+    const { error: e } = await getSupabase().rpc('item_target_use', { p_room_id: roomId, p_digit: d })
+    if (e) {
+      setError(e.message)
+      return
+    }
+    setTargetDigitInput('')
+    await refreshAll()
+  }
+
+  async function handleItemSlash() {
+    setError(null)
+    if (!roomId) return
+    const { error: e } = await getSupabase().rpc('item_slash_use', { p_room_id: roomId })
+    if (e) {
+      setError(e.message)
+      return
+    }
+    await refreshAll()
+  }
+
+  async function handleItemShuffle() {
+    setError(null)
+    if (!roomId) return
+    const { error: e } = await getSupabase().rpc('item_shuffle_use', { p_room_id: roomId })
+    if (e) {
+      setError(e.message)
+      return
+    }
+    await refreshAll()
+  }
+
+  async function handleItemChange() {
+    setError(null)
+    if (!roomId || !room) return
+    const d = Number.parseInt(changeNewDigit.trim(), 10)
+    if (!Number.isInteger(d) || d < 0 || d > 9) {
+      setError('チェンジ先は 0〜9 で入れてね')
+      return
+    }
+    const { error: e } = await getSupabase().rpc('item_change_use', {
+      p_room_id: roomId,
+      p_slot: changeSlot,
+      p_new_digit: d,
+    })
+    if (e) {
+      setError(e.message)
+      return
+    }
+    setChangeNewDigit('')
+    await refreshAll()
+  }
+
   function leaveRoom() {
     setRoomId(null)
     setRoom(null)
@@ -350,7 +524,11 @@ export function App() {
     setMemberCount(0)
     setMemberUserIds([])
     setItemCards([])
+    setItemEvents([])
+    setItemSecretPayloads({})
     setMySecretDigits(null)
+    setTargetDigitInput('')
+    setChangeNewDigit('')
     setError(null)
   }
 
@@ -416,6 +594,31 @@ export function App() {
   const myMatchWins = userId && mw ? Number(mw[userId] ?? 0) : 0
   const oppUid = memberUserIds.find((id) => id !== userId) ?? null
   const oppMatchWins = oppUid && mw ? Number(mw[oppUid] ?? 0) : 0
+
+  const hasUnusedItem = (k: ItemKind) =>
+    Boolean(userId) && itemCards.some((c) => c.user_id === userId && c.item_kind === k && !c.used_at)
+  const canUseNonDoubleItem =
+    room?.status === 'playing' && myTurn && doublePhase == null
+  const canHighlow = canUseNonDoubleItem && hasUnusedItem('HIGHLOW')
+  const canTarget = canUseNonDoubleItem && hasUnusedItem('TARGET')
+  const canSlash = canUseNonDoubleItem && hasUnusedItem('SLASH')
+  const canShuffle = canUseNonDoubleItem && hasUnusedItem('SHUFFLE')
+  const canChange = canUseNonDoubleItem && hasUnusedItem('CHANGE')
+
+  const timeline: TimelineEntry[] = [
+    ...guesses.map((g) => ({ sortKey: `${g.created_at}\0${g.id}`, kind: 'g' as const, guess: g })),
+    ...itemEvents.map((ev) => ({
+      sortKey: `${ev.created_at}\0${ev.id}`,
+      kind: 'i' as const,
+      ev,
+      secretPayload: itemSecretPayloads[ev.id] ?? null,
+    })),
+  ].sort((a, b) => {
+    const c = a.sortKey.localeCompare(b.sortKey)
+    return c !== 0 ? c : 0
+  })
+
+  const changeSlotSafe = Math.min(Math.max(1, changeSlot), dl)
 
   return (
     <main style={{ fontFamily: 'system-ui', padding: '1.5rem', maxWidth: 560 }}>
@@ -566,17 +769,23 @@ export function App() {
           {room?.status === 'playing' || room?.status === 'finished' ? (
             <>
               <div style={{ marginTop: '1rem' }}>
-                <h2 style={{ fontSize: '1rem' }}>コール履歴</h2>
+                <h2 style={{ fontSize: '1rem' }}>コール & アイテム履歴</h2>
                 {doubleRevealLabel ? (
                   <p style={{ fontSize: '0.9rem', color: '#0a5', marginBottom: 8 }}>{doubleRevealLabel}</p>
                 ) : null}
                 <ul style={{ paddingLeft: '1.2rem' }}>
-                  {guesses.map((g) => (
-                    <li key={g.id}>
-                      {g.digits} → Hit {g.hit} / Blow {g.blow}
-                      {g.guesser_id === userId ? '（あなた）' : ''}
-                    </li>
-                  ))}
+                  {timeline.map((t) =>
+                    t.kind === 'g' ? (
+                      <li key={`g-${t.guess.id}`}>
+                        {t.guess.digits} → Hit {t.guess.hit} / Blow {t.guess.blow}
+                        {t.guess.guesser_id === userId ? '（あなた）' : ''}
+                      </li>
+                    ) : (
+                      <li key={`i-${t.ev.id}`} style={{ color: '#274' }}>
+                        {formatItemEventLine(t.ev, userId, t.secretPayload)}
+                      </li>
+                    ),
+                  )}
                 </ul>
               </div>
               {room.status === 'playing' && waitingDoubleReveal ? (
@@ -617,6 +826,71 @@ export function App() {
                       <button type="button" onClick={() => void handleDoubleStart()}>
                         ダブルを使う（このターンでコール 2 連続。先に相手が開示桁を指定）
                       </button>
+                    </div>
+                  ) : null}
+                  {canHighlow || canTarget || canSlash || canShuffle || canChange ? (
+                    <div style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid #ddd' }}>
+                      <div style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: 8 }}>その他のアイテム（1 回で手番交代）</div>
+                      <p style={{ fontSize: '0.82rem', color: '#555', marginBottom: 8 }}>
+                        HIGH&LOW は左から各桁が H(5–9)/L(0–4)。スラッシュは相手の最小・最大・差と昇順の桁列。
+                      </p>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', marginBottom: 8 }}>
+                        {canHighlow ? (
+                          <button type="button" onClick={() => void handleItemHighlow()}>
+                            HIGH&LOW
+                          </button>
+                        ) : null}
+                        {canSlash ? (
+                          <button type="button" onClick={() => void handleItemSlash()}>
+                            スラッシュ
+                          </button>
+                        ) : null}
+                        {canShuffle ? (
+                          <button type="button" onClick={() => void handleItemShuffle()}>
+                            シャッフル（自分の並び）
+                          </button>
+                        ) : null}
+                      </div>
+                      {canTarget ? (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', marginBottom: 8 }}>
+                          <span style={{ fontSize: '0.88rem' }}>ターゲット</span>
+                          <input
+                            inputMode="numeric"
+                            placeholder="0–9"
+                            value={targetDigitInput}
+                            onChange={(e) => setTargetDigitInput(e.target.value)}
+                            style={{ width: '3rem' }}
+                          />
+                          <button type="button" onClick={() => void handleItemTarget()}>
+                            実行
+                          </button>
+                        </div>
+                      ) : null}
+                      {canChange ? (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+                          <span style={{ fontSize: '0.88rem' }}>チェンジ</span>
+                          <select
+                            value={changeSlotSafe}
+                            onChange={(e) => setChangeSlot(Number(e.target.value))}
+                          >
+                            {Array.from({ length: dl }, (_, i) => i + 1).map((slot) => (
+                              <option key={slot} value={slot}>
+                                {slot} 桁目
+                              </option>
+                            ))}
+                          </select>
+                          <input
+                            inputMode="numeric"
+                            placeholder="新桁"
+                            value={changeNewDigit}
+                            onChange={(e) => setChangeNewDigit(e.target.value)}
+                            style={{ width: '3rem' }}
+                          />
+                          <button type="button" onClick={() => void handleItemChange()}>
+                            実行
+                          </button>
+                        </div>
+                      ) : null}
                     </div>
                   ) : null}
                 </div>
