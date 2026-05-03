@@ -116,10 +116,7 @@ function formatItemEventLine(
     }
     case 'SLASH': {
       if (you && secretPayload && typeof secretPayload.spread === 'number') {
-        const mn = secretPayload.min
-        const mx = secretPayload.max
-        const sd = secretPayload.sorted_digits
-        return `スラッシュ（${who}）→ min ${String(mn)} max ${String(mx)} 差 ${String(secretPayload.spread)} · 昇順 ${String(sd ?? '')}`
+        return `スラッシュ（${who}）→ 差 ${String(secretPayload.spread)}`
       }
       return `スラッシュ（${who}）`
     }
@@ -821,78 +818,167 @@ export function App() {
                   <button type="button" style={{ marginLeft: 8 }} onClick={() => void handleGuess()}>
                     コール
                   </button>
-                  {canUseDouble ? (
-                    <div style={{ marginTop: 12 }}>
-                      <button type="button" onClick={() => void handleDoubleStart()}>
-                        ダブルを使う（このターンでコール 2 連続。先に相手が開示桁を指定）
-                      </button>
-                    </div>
-                  ) : null}
-                  {canHighlow || canTarget || canSlash || canShuffle || canChange ? (
-                    <div style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid #ddd' }}>
-                      <div style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: 8 }}>その他のアイテム（1 回で手番交代）</div>
-                      <p style={{ fontSize: '0.82rem', color: '#555', marginBottom: 8 }}>
-                        HIGH&LOW は左から各桁が H(5–9)/L(0–4)。スラッシュは相手の最小・最大・差と昇順の桁列。
-                      </p>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', marginBottom: 8 }}>
-                        {canHighlow ? (
-                          <button type="button" onClick={() => void handleItemHighlow()}>
-                            HIGH&LOW
-                          </button>
-                        ) : null}
-                        {canSlash ? (
-                          <button type="button" onClick={() => void handleItemSlash()}>
-                            スラッシュ
-                          </button>
-                        ) : null}
-                        {canShuffle ? (
-                          <button type="button" onClick={() => void handleItemShuffle()}>
-                            シャッフル（自分の並び）
-                          </button>
-                        ) : null}
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      alignItems: 'stretch',
+                      gap: 10,
+                      marginTop: 14,
+                      paddingTop: 12,
+                      borderTop: '1px solid #ddd',
+                    }}
+                  >
+                    <p style={{ width: '100%', fontSize: '0.82rem', color: '#555', margin: '0 0 4px' }}>
+                      アイテム（未使用のみ操作可。HIGH&LOW は H(5–9)/L(0–4)。スラッシュは min/max/差・昇順桁列）
+                    </p>
+                    {(
+                      [
+                        {
+                          key: 'DOUBLE' as const,
+                          label: ITEM_LABELS.DOUBLE,
+                          active: canUseDouble,
+                          body: (
+                            <button
+                              type="button"
+                              disabled={!canUseDouble}
+                              onClick={() => void handleDoubleStart()}
+                              style={{ width: '100%', fontSize: '0.8rem' }}
+                            >
+                              使用（2 連コール）
+                            </button>
+                          ),
+                        },
+                        {
+                          key: 'HIGHLOW' as const,
+                          label: ITEM_LABELS.HIGHLOW,
+                          active: canHighlow,
+                          body: (
+                            <button
+                              type="button"
+                              disabled={!canHighlow}
+                              onClick={() => void handleItemHighlow()}
+                              style={{ width: '100%' }}
+                            >
+                              使用
+                            </button>
+                          ),
+                        },
+                        {
+                          key: 'TARGET' as const,
+                          label: ITEM_LABELS.TARGET,
+                          active: canTarget,
+                          body: (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                              <input
+                                inputMode="numeric"
+                                placeholder="0–9"
+                                value={targetDigitInput}
+                                onChange={(e) => setTargetDigitInput(e.target.value)}
+                                disabled={!canTarget}
+                                style={{ width: '100%', boxSizing: 'border-box' }}
+                              />
+                              <button
+                                type="button"
+                                disabled={!canTarget}
+                                onClick={() => void handleItemTarget()}
+                                style={{ width: '100%' }}
+                              >
+                                実行
+                              </button>
+                            </div>
+                          ),
+                        },
+                        {
+                          key: 'SLASH' as const,
+                          label: ITEM_LABELS.SLASH,
+                          active: canSlash,
+                          body: (
+                            <button
+                              type="button"
+                              disabled={!canSlash}
+                              onClick={() => void handleItemSlash()}
+                              style={{ width: '100%' }}
+                            >
+                              使用
+                            </button>
+                          ),
+                        },
+                        {
+                          key: 'SHUFFLE' as const,
+                          label: ITEM_LABELS.SHUFFLE,
+                          active: canShuffle,
+                          body: (
+                            <button
+                              type="button"
+                              disabled={!canShuffle}
+                              onClick={() => void handleItemShuffle()}
+                              style={{ width: '100%', fontSize: '0.8rem' }}
+                            >
+                              使用
+                            </button>
+                          ),
+                        },
+                        {
+                          key: 'CHANGE' as const,
+                          label: ITEM_LABELS.CHANGE,
+                          active: canChange,
+                          body: (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                              <select
+                                value={changeSlotSafe}
+                                onChange={(e) => setChangeSlot(Number(e.target.value))}
+                                disabled={!canChange}
+                                style={{ width: '100%' }}
+                              >
+                                {Array.from({ length: dl }, (_, i) => i + 1).map((slot) => (
+                                  <option key={slot} value={slot}>
+                                    {slot} 桁
+                                  </option>
+                                ))}
+                              </select>
+                              <input
+                                inputMode="numeric"
+                                placeholder="新桁"
+                                value={changeNewDigit}
+                                onChange={(e) => setChangeNewDigit(e.target.value)}
+                                disabled={!canChange}
+                                style={{ width: '100%', boxSizing: 'border-box' }}
+                              />
+                              <button
+                                type="button"
+                                disabled={!canChange}
+                                onClick={() => void handleItemChange()}
+                                style={{ width: '100%' }}
+                              >
+                                実行
+                              </button>
+                            </div>
+                          ),
+                        },
+                      ] as const
+                    ).map(({ key, label, active, body }) => (
+                      <div
+                        key={key}
+                        style={{
+                          flex: '1 1 92px',
+                          minWidth: 88,
+                          maxWidth: 140,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 6,
+                          padding: 8,
+                          border: '1px solid #ddd',
+                          borderRadius: 6,
+                          background: '#fafafa',
+                          opacity: active ? 1 : 0.5,
+                        }}
+                      >
+                        <div style={{ fontSize: '0.78rem', fontWeight: 600, lineHeight: 1.25 }}>{label}</div>
+                        {body}
                       </div>
-                      {canTarget ? (
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', marginBottom: 8 }}>
-                          <span style={{ fontSize: '0.88rem' }}>ターゲット</span>
-                          <input
-                            inputMode="numeric"
-                            placeholder="0–9"
-                            value={targetDigitInput}
-                            onChange={(e) => setTargetDigitInput(e.target.value)}
-                            style={{ width: '3rem' }}
-                          />
-                          <button type="button" onClick={() => void handleItemTarget()}>
-                            実行
-                          </button>
-                        </div>
-                      ) : null}
-                      {canChange ? (
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-                          <span style={{ fontSize: '0.88rem' }}>チェンジ</span>
-                          <select
-                            value={changeSlotSafe}
-                            onChange={(e) => setChangeSlot(Number(e.target.value))}
-                          >
-                            {Array.from({ length: dl }, (_, i) => i + 1).map((slot) => (
-                              <option key={slot} value={slot}>
-                                {slot} 桁目
-                              </option>
-                            ))}
-                          </select>
-                          <input
-                            inputMode="numeric"
-                            placeholder="新桁"
-                            value={changeNewDigit}
-                            onChange={(e) => setChangeNewDigit(e.target.value)}
-                            style={{ width: '3rem' }}
-                          />
-                          <button type="button" onClick={() => void handleItemChange()}>
-                            実行
-                          </button>
-                        </div>
-                      ) : null}
-                    </div>
-                  ) : null}
+                    ))}
+                  </div>
                 </div>
               ) : null}
               {room.status === 'playing' &&

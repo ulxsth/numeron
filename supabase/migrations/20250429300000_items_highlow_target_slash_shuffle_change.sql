@@ -42,7 +42,7 @@ create policy room_item_event_secrets_select on public.room_item_event_secrets
 -- --- 内部: カード消費・手番・ダブル無効 ------------------------------------------------
 
 create or replace function public.assert_item_turn(p_room_id uuid)
-returns public.rooms%rowtype
+returns public.rooms
 language plpgsql
 security definer
 set search_path = public
