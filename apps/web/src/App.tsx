@@ -87,6 +87,21 @@ function errMessage(e: unknown): string {
   return String(e)
 }
 
+function roomStatusLabel(status: string | undefined): string {
+  switch (status) {
+    case 'lobby':
+      return 'ロビー'
+    case 'waiting':
+      return 'ナンバー設定'
+    case 'playing':
+      return '対局中'
+    case 'finished':
+      return '終了'
+    default:
+      return status ?? '…'
+  }
+}
+
 // アイテムイベントのテキストを生成
 function formatItemEventLine(
   ev: ItemEventRow,
@@ -131,6 +146,9 @@ function formatItemEventLine(
   }
 }
 
+const DEFAULT_DIGIT_LENGTH: 3 | 4 = 3
+const DEFAULT_MATCH_WINS_REQUIRED = 1
+
 export function App() {
   const [booting, setBooting] = useState(true)
   const [userId, setUserId] = useState<string | null>(null)
@@ -142,8 +160,6 @@ export function App() {
   const [joinCode, setJoinCode] = useState('')
   const [secretInput, setSecretInput] = useState('')
   const [guessInput, setGuessInput] = useState('')
-  const [createDigitLen, setCreateDigitLen] = useState<3 | 4>(4)
-  const [createMatchWins, setCreateMatchWins] = useState(1)
   const [memberUserIds, setMemberUserIds] = useState<string[]>([])
   const [itemCards, setItemCards] = useState<ItemCardRow[]>([])
   const [itemEvents, setItemEvents] = useState<ItemEventRow[]>([])
@@ -151,6 +167,9 @@ export function App() {
   const [targetDigitInput, setTargetDigitInput] = useState('')
   const [changeSlot, setChangeSlot] = useState(1)
   const [changeNewDigit, setChangeNewDigit] = useState('')
+  const [lobbyDraftDigit, setLobbyDraftDigit] = useState<3 | 4>(3)
+  const [lobbyDraftMatchWins, setLobbyDraftMatchWins] = useState(1)
+  const [codeCopiedHint, setCodeCopiedHint] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const refreshAll = useCallback(async () => {
@@ -224,6 +243,12 @@ export function App() {
       setItemSecretPayloads(map)
     }
   }, [roomId, userId])
+
+  useEffect(() => {
+    if (!room || room.status !== 'lobby') return
+    setLobbyDraftDigit(room.digit_length as 3 | 4)
+    setLobbyDraftMatchWins(room.match_wins_required)
+  }, [room?.id, room?.digit_length, room?.match_wins_required, room?.status])
 
   useEffect(() => {
     if (!isSupabaseConfigured) {
@@ -304,6 +329,13 @@ export function App() {
           void refreshAll()
         },
       )
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'room_members', filter: `room_id=eq.${roomId}` },
+        () => {
+          void refreshAll()
+        },
+      )
       .subscribe()
     void refreshAll()
     return () => {
@@ -319,9 +351,9 @@ export function App() {
       .from('rooms')
       .insert({
         short_code: code,
-        status: 'waiting',
-        digit_length: createDigitLen,
-        match_wins_required: createMatchWins,
+        status: 'lobby',
+        digit_length: DEFAULT_DIGIT_LENGTH,
+        match_wins_required: DEFAULT_MATCH_WINS_REQUIRED,
       })
       .select()
       .single()
@@ -334,6 +366,7 @@ export function App() {
       setError(e2.message)
       return
     }
+    setRoom(created as Room)
     setRoomId(created.id as string)
   }
 
@@ -372,6 +405,45 @@ export function App() {
       }
     }
     setRoomId(found.id as string)
+  }
+
+  async function handleSaveLobbySettings() {
+    setError(null)
+    if (!roomId || !room) return
+    const { error: e } = await getSupabase().rpc('room_update_lobby_settings', {
+      p_room_id: roomId,
+      p_digit_length: lobbyDraftDigit,
+      p_match_wins_required: lobbyDraftMatchWins,
+    })
+    if (e) {
+      setError(e.message)
+      return
+    }
+    await refreshAll()
+  }
+
+  async function copyRoomCode() {
+    setError(null)
+    const code = room?.short_code ?? ''
+    if (!code) return
+    try {
+      await navigator.clipboard.writeText(code)
+      setCodeCopiedHint(true)
+      window.setTimeout(() => setCodeCopiedHint(false), 2000)
+    } catch {
+      setError('コードのコピーに失敗したよ')
+    }
+  }
+
+  async function handleHostBeginSecretSetup() {
+    setError(null)
+    if (!roomId) return
+    const { error: e } = await getSupabase().rpc('room_host_begin_secret_setup', { p_room_id: roomId })
+    if (e) {
+      setError(e.message)
+      return
+    }
+    await refreshAll()
   }
 
   async function handleSaveSecret() {
@@ -526,6 +598,7 @@ export function App() {
     setMySecretDigits(null)
     setTargetDigitInput('')
     setChangeNewDigit('')
+    setCodeCopiedHint(false)
     setError(null)
   }
 
@@ -550,7 +623,7 @@ export function App() {
     )
   }
 
-  const dl = room?.digit_length ?? createDigitLen
+  const dl = room?.digit_length ?? DEFAULT_DIGIT_LENGTH
   const myTurn = room?.status === 'playing' && room.current_turn_user_id === userId
   const doublePhase = room?.double_phase ?? null
   const doubleAttackerId = room?.double_attacker_id ?? null
@@ -616,12 +689,16 @@ export function App() {
   })
 
   const changeSlotSafe = Math.min(Math.max(1, changeSlot), dl)
+  const aloneInLobby = Boolean(room && room.status === 'lobby' && memberCount === 1)
+  const twoInLobby = Boolean(room && room.status === 'lobby' && memberCount === 2)
+  const isRoomHost = Boolean(room && userId && room.created_by === userId)
+  const roomCode = room?.short_code ?? ''
 
   return (
     <main style={{ fontFamily: 'system-ui', padding: '1.5rem', maxWidth: 560 }}>
       <h1 style={{ fontSize: '1.25rem' }}>Numeron（第1段）</h1>
       <p style={{ color: '#555', fontSize: '0.9rem' }}>
-        双方向・交互コール。マッチは先取（1〜10）で長さを決められる。
+        双方向・交互コール。ルームに入ってから桁数と BO（先取）を決められるよ。
       </p>
 
       {error ? (
@@ -634,26 +711,9 @@ export function App() {
         <section style={{ marginTop: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <div>
             <h2 style={{ fontSize: '1rem' }}>ルーム作成</h2>
-            <label style={{ display: 'block', marginBottom: 8 }}>
-              桁数{' '}
-              <select value={createDigitLen} onChange={(e) => setCreateDigitLen(Number(e.target.value) as 3 | 4)}>
-                <option value={4}>4</option>
-                <option value={3}>3</option>
-              </select>
-            </label>
-            <label style={{ display: 'block', marginBottom: 8 }}>
-              マッチ先取（1 = 1 ゲームのみ、2 = 2 本先取…最大 10）{' '}
-              <select
-                value={createMatchWins}
-                onChange={(e) => setCreateMatchWins(Number(e.target.value))}
-              >
-                {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
-                  <option key={n} value={n}>
-                    {n}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <p style={{ fontSize: '0.88rem', color: '#555', marginBottom: 8 }}>
+              デフォルトは 3 桁・1 ゲーム。入室後（ひとりのロビー）で変えられるよ。
+            </p>
             <button type="button" onClick={() => void handleCreateRoom()}>
               作成
             </button>
@@ -673,11 +733,45 @@ export function App() {
         </section>
       ) : (
         <section style={{ marginTop: '1.25rem' }}>
-          <p>
-            コード: <strong>{room?.short_code ?? '…'}</strong>（相手に共有）
-          </p>
+          <div
+            style={{
+              padding: '1rem',
+              borderRadius: 8,
+              border: '1px solid #ccc',
+              background: '#f8f8f8',
+              marginBottom: '1rem',
+            }}
+          >
+            <p style={{ margin: 0, fontSize: '0.85rem', color: '#555' }}>ルームコード（相手に送る）</p>
+            <p
+              style={{
+                margin: '6px 0 0',
+                fontSize: '1.75rem',
+                fontFamily: 'ui-monospace, monospace',
+                letterSpacing: '0.12em',
+                fontWeight: 600,
+              }}
+            >
+              {roomCode || '…'}
+            </p>
+            {roomCode ? (
+              <p style={{ margin: '10px 0 0', fontSize: '0.88rem', color: '#444' }}>
+                <button type="button" onClick={() => void copyRoomCode()} style={{ marginRight: 10 }}>
+                  クリップボードにコピー
+                </button>
+                {codeCopiedHint ? <span style={{ color: '#0a5' }}>コピーしたよ</span> : null}
+              </p>
+            ) : null}
+            {aloneInLobby || twoInLobby ? (
+              <p style={{ margin: '10px 0 0', fontSize: '0.88rem', color: '#333' }}>
+                {aloneInLobby
+                  ? '相手が入るまでここで待てるよ。ルールを決めてから、2 人そろったらホストがナンバー設定を開くよ。'
+                  : 'ホストが「ナンバー設定を始める」を押すと、ここから秘密を登録できるようになるよ。'}
+              </p>
+            ) : null}
+          </div>
           <p style={{ fontSize: '0.9rem', color: '#444' }}>
-            メンバー {memberCount} / 2 · 状態 {room?.status ?? '…'}
+            メンバー {memberCount} / 2 · {roomStatusLabel(room?.status)}
             {room && winsReq > 1 ? (
               <>
                 {' '}
@@ -690,7 +784,59 @@ export function App() {
             別ルームへ
           </button>
 
-          {memberCount >= 2 && userId ? (
+          {aloneInLobby ? (
+            <div style={{ marginTop: '1rem', padding: '0.85rem', border: '1px solid #ddd', borderRadius: 8 }}>
+              <h2 style={{ fontSize: '1rem', marginTop: 0 }}>ルール（相手が来るまで変更可）</h2>
+              <p style={{ fontSize: '0.82rem', color: '#555', marginTop: 4 }}>
+                2 人目が参加したら固定されるよ。
+              </p>
+              <label style={{ display: 'block', marginBottom: 8 }}>
+                桁数{' '}
+                <select
+                  value={lobbyDraftDigit}
+                  onChange={(e) => setLobbyDraftDigit(Number(e.target.value) as 3 | 4)}
+                >
+                  <option value={3}>3</option>
+                  <option value={4}>4</option>
+                </select>
+              </label>
+              <label style={{ display: 'block', marginBottom: 8 }}>
+                マッチ先取（1 = 1 ゲームのみ）{' '}
+                <select
+                  value={lobbyDraftMatchWins}
+                  onChange={(e) => setLobbyDraftMatchWins(Number(e.target.value))}
+                >
+                  {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
+                    <option key={n} value={n}>
+                      {n}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button type="button" onClick={() => void handleSaveLobbySettings()}>
+                ルールを反映
+              </button>
+            </div>
+          ) : null}
+
+          {twoInLobby ? (
+            <div style={{ marginTop: '1rem', padding: '0.85rem', border: '1px solid #cce', borderRadius: 8, background: '#f6f9fc' }}>
+              {isRoomHost ? (
+                <>
+                  <p style={{ margin: '0 0 10px', fontSize: '0.9rem', color: '#333' }}>
+                    二人そろったよ。準備ができたらナンバー設定に進んでね。
+                  </p>
+                  <button type="button" onClick={() => void handleHostBeginSecretSetup()}>
+                    ナンバー設定を始める
+                  </button>
+                </>
+              ) : (
+                <p style={{ margin: 0, fontSize: '0.9rem', color: '#444' }}>ホストが開始するまで待ってね。</p>
+              )}
+            </div>
+          ) : null}
+
+          {memberCount >= 2 && userId && room && room.status !== 'lobby' ? (
             <div style={{ marginTop: '1rem', fontSize: '0.88rem', color: '#333' }}>
               <h2 style={{ fontSize: '1rem' }}>アイテム（マッチ通算・各 1 回）</h2>
               <p style={{ color: '#555', marginTop: 4 }}>
@@ -729,11 +875,11 @@ export function App() {
             </div>
           ) : memberCount === 1 ? (
             <p style={{ marginTop: '0.75rem', fontSize: '0.88rem', color: '#666' }}>
-              アイテムカードは対戦相手が入ったあと 6 種×1 枚ずつ配られる。
+              相手が入室しホストが開始すると、アイテムカードが 6 種×1 枚ずつ配られるよ。
             </p>
           ) : null}
 
-          {!hasMySecret && room ? (
+          {!hasMySecret && room && room.status === 'waiting' ? (
             <div style={{ marginTop: '1rem' }}>
               <h2 style={{ fontSize: '1rem' }}>あなたの秘密 {dl} 桁</h2>
               {room.status === 'waiting' && winsReq > 1 && (room.current_game_index ?? 1) > 1 ? (

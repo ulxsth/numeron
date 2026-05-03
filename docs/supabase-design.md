@@ -32,7 +32,7 @@
 |----|----|------|
 | `id` | `uuid` PK | ルーム ID |
 | `short_code` | `text` UNIQUE | 参加用の短いコード |
-| `status` | `text` | `waiting` / `playing` / `finished` |
+| `status` | `text` | `lobby`（集まり待ち） / `waiting`（ナンバー設定） / `playing` / `finished` |
 | `digit_length` | `smallint` | 3 または 4 |
 | `created_at` | `timestamptz` | |
 | `created_by` | `uuid` | 作成者 |
@@ -47,6 +47,10 @@
 | `double_reveal_digit` | `text` | 開示された数字 1 文字 |
 
 ダブル操作は RPC `double_start(room_id)`（手番・未使用カード必須）、`double_submit_reveal_slot(room_id, slot)`（防御のみ、`await_reveal` 時）で行う。
+
+ロビーで**作成者だけ**が部屋にいる間（`lobby`・メンバー 1 名）、桁数とマッチ先取は RPC `room_update_lobby_settings` で変更できる。2 人目参加後は拒否。
+
+2 人在室の `lobby` から、ホスト（`created_by`）だけが `room_host_begin_secret_setup(room_id)` で `waiting` に遷移できる。その後に `room_secrets` の登録が可能（`lobby` 中はトリガーで拒否）。
 
 ### 3.2 `room_members`
 
@@ -96,7 +100,7 @@
 
 **手番**: `guesses` の INSERT は **`rooms.current_turn_user_id = auth.uid()`** のときのみ許可（RLS またはトリガー）。直後に **手番を相手に更新**（`AFTER INSERT`）。終了時は手番更新を止め `status = finished` と `winner_user_id` をセット。
 
-ゲーム開始条件の例: メンバーが 2 名かつ **両方の `room_secrets` が揃った**ら `playing` とし、先攻を `created_by` または固定ルールで `current_turn_user_id` に入れる。
+ゲーム開始条件の例: ホストが `lobby` から `waiting` にしたうえで、メンバーが 2 名かつ双方の `room_secrets` が揃ったら `playing` とし、先攻を `created_by` または固定ルールで `current_turn_user_id` に入れる。
 
 ### 3.5 `room_item_cards`
 
@@ -148,7 +152,7 @@ RPC（すべて `SECURITY DEFINER`、手番・`double_phase is null`・カード
 
 ## 5. Realtime（Postgres Changes）
 
-- `guesses` と `rooms` と `room_item_cards` と `room_item_events` を `supabase_realtime` publication に追加。
+- `guesses` と `rooms` と `room_item_cards` と `room_item_events` と `room_members` を `supabase_realtime` publication に追加。
 - クライアントは `postgres_changes` で **新しいコール・ルーム状態・アイテムカード・アイテム公開ログ**を購読。
 - 初回・再接続時は **`select` で履歴／状態を再取得**。
 
