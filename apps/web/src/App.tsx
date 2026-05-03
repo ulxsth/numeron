@@ -19,11 +19,7 @@ export function App() {
 
   return (
     <main style={{ fontFamily: 'system-ui', padding: '1.5rem', maxWidth: 560 }}>
-      <h1 style={{ fontSize: '1.25rem' }}>Numeron（第1段）</h1>
-      <p style={{ color: '#555', fontSize: '0.9rem' }}>
-        双方向・交互コール。ルームに入ってから桁数と BO（先取）を決められるよ。
-      </p>
-
+      <h1 style={{ fontSize: '1.25rem' }}>Numeron</h1>
       {g.error ? (
         <p style={{ color: '#b00', marginTop: '1rem' }} role="alert">
           {g.error}

@@ -17,7 +17,7 @@ export function RoomCodeCard({ roomCode, codeCopiedHint, aloneInLobby, twoInLobb
         marginBottom: '1rem',
       }}
     >
-      <p style={{ margin: 0, fontSize: '0.85rem', color: '#555' }}>ルームコード（相手に送る）</p>
+      <p style={{ margin: 0, fontSize: '0.85rem', color: '#555' }}>ルームコード</p>
       <p
         style={{
           margin: '6px 0 0',
@@ -35,13 +35,6 @@ export function RoomCodeCard({ roomCode, codeCopiedHint, aloneInLobby, twoInLobb
             クリップボードにコピー
           </button>
           {codeCopiedHint ? <span style={{ color: '#0a5' }}>コピーしたよ</span> : null}
-        </p>
-      ) : null}
-      {aloneInLobby || twoInLobby ? (
-        <p style={{ margin: '10px 0 0', fontSize: '0.88rem', color: '#333' }}>
-          {aloneInLobby
-            ? '相手が入るまでここで待てるよ。ルールを決めてから、2 人そろったらホストがナンバー設定を開くよ。'
-            : 'ホストが「ナンバー設定を始める」を押すと、ここから秘密を登録できるようになるよ。'}
         </p>
       ) : null}
     </div>

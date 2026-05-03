@@ -57,10 +57,10 @@ export function formatItemEventLine(
     case 'TARGET': {
       const q = ev.public_data.queried_digit
       const base =
-        typeof q === 'number' || typeof q === 'string' ? `ターゲット ${q}（${who}）` : `ターゲット（${who}）`
+        typeof q === 'number' || typeof q === 'string' ? `TARGET ${q}（${who}）` : `TARGET（${who}）`
       if (you && secretPayload && typeof secretPayload.contains === 'boolean') {
         if (secretPayload.contains && typeof secretPayload.slot === 'number') {
-          return `${base} → 含む · 左から ${secretPayload.slot} 桁目`
+          return `${base} → 左から ${secretPayload.slot} 桁目`
         }
         return `${base} → 含まない`
       }
@@ -68,15 +68,15 @@ export function formatItemEventLine(
     }
     case 'SLASH': {
       if (you && secretPayload && typeof secretPayload.spread === 'number') {
-        return `スラッシュ（${who}）→ 差 ${String(secretPayload.spread)}`
+        return `SLASH（${who}）→ MAX - MIN = ${String(secretPayload.spread)}`
       }
-      return `スラッシュ（${who}）`
+      return `SLASH（${who}）`
     }
     case 'SHUFFLE':
-      return `シャッフル（${who}・自分の並び変更）`
+      return `SHUFFLE（${who}）`
     case 'CHANGE': {
       const sl = ev.public_data.slot
-      return `チェンジ（${who}${typeof sl === 'number' ? ` · ${sl} 桁目` : ''}）`
+      return `CHANGE（${who}${typeof sl === 'number' ? ` · ${sl} 桁目` : ''}）`
     }
     default:
       return `${ev.item_kind}（${who}）`

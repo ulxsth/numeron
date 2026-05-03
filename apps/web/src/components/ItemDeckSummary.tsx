@@ -15,12 +15,6 @@ export function ItemDeckSummary({ userId, room, memberCount, itemCards, oppUid }
     return (
       <div style={{ marginTop: '1rem', fontSize: '0.88rem', color: '#333' }}>
         <h2 style={{ fontSize: '1rem' }}>アイテム（マッチ通算・各 1 回）</h2>
-        <p style={{ color: '#555', marginTop: 4 }}>
-          BO 中はゲームが変わっても使用済みは戻らない。ダブルは手番に使える（連続 2 コール）。
-        </p>
-        {itemCards.length === 0 ? (
-          <p style={{ color: '#888' }}>カード行がまだ無いよ。`room_item_cards` のマイグレーションを当ててね。</p>
-        ) : (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.25rem', marginTop: 8 }}>
             <div>
               <div style={{ fontWeight: 600, marginBottom: 4 }}>あなた</div>
@@ -47,16 +41,12 @@ export function ItemDeckSummary({ userId, room, memberCount, itemCards, oppUid }
               </div>
             ) : null}
           </div>
-        )}
+        )
       </div>
     )
   }
   if (memberCount === 1) {
-    return (
-      <p style={{ marginTop: '0.75rem', fontSize: '0.88rem', color: '#666' }}>
-        相手が入室しホストが開始すると、アイテムカードが 6 種×1 枚ずつ配られるよ。
-      </p>
-    )
+    return <></>
   }
   return null
 }

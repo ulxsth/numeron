@@ -267,13 +267,18 @@ export function useNumeronGame() {
     setRoomId(found.id as string)
   }
 
-  async function handleSaveLobbySettings() {
+  async function handleSaveLobbySettings(overrides?: {
+    digitLength?: 3 | 4
+    matchWinsRequired?: number
+  }) {
     setError(null)
     if (!roomId || !room) return
+    const digitLength = overrides?.digitLength ?? lobbyDraftDigit
+    const matchWinsRequired = overrides?.matchWinsRequired ?? lobbyDraftMatchWins
     const { error: e } = await getSupabase().rpc('room_update_lobby_settings', {
       p_room_id: roomId,
-      p_digit_length: lobbyDraftDigit,
-      p_match_wins_required: lobbyDraftMatchWins,
+      p_digit_length: digitLength,
+      p_match_wins_required: matchWinsRequired,
     })
     if (e) {
       setError(e.message)
@@ -491,7 +496,7 @@ export function useNumeronGame() {
       doublePhase === 'first_call'
         ? 'ダブル: 1 コール目'
         : doublePhase === 'second_call'
-          ? 'ダブル: 2 コール目（このあと手番が相手に戻る）'
+          ? 'ダブル: 2 コール目'
           : null
     const hasMySecret = Boolean(mySecretDigits)
     const waitingForOpponentSecret =

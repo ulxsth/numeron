@@ -56,7 +56,7 @@ type Props = {
   setChangeSlot: (v: number) => void
   leaveRoom: () => void
   copyRoomCode: () => void
-  handleSaveLobbySettings: () => void
+  handleSaveLobbySettings: (overrides?: { digitLength?: 3 | 4; matchWinsRequired?: number }) => void
   handleHostBeginSecretSetup: () => void
   handleSaveSecret: () => void
   handleGuess: () => void
@@ -130,15 +130,23 @@ export function RoomView({
     canChange,
   } = derived
 
+  const showRoomCode =
+    !room || (room.status !== 'playing' && room.status !== 'finished')
+
   return (
     <section style={{ marginTop: '1.25rem' }}>
-      <RoomCodeCard
-        roomCode={roomCode}
-        codeCopiedHint={codeCopiedHint}
-        aloneInLobby={aloneInLobby}
-        twoInLobby={twoInLobby}
-        onCopy={copyRoomCode}
-      />
+      <button type="button" style={{ marginTop: 16, marginBottom: 16 }} onClick={leaveRoom}>
+        もどる
+      </button>
+      {showRoomCode ? (
+        <RoomCodeCard
+          roomCode={roomCode}
+          codeCopiedHint={codeCopiedHint}
+          aloneInLobby={aloneInLobby}
+          twoInLobby={twoInLobby}
+          onCopy={copyRoomCode}
+        />
+      ) : null}
       <p style={{ fontSize: '0.9rem', color: '#444' }}>
         メンバー {memberCount} / 2 · {roomStatusLabel(room?.status)}
         {room && winsReq > 1 ? (
@@ -148,9 +156,6 @@ export function RoomView({
           </>
         ) : null}
       </p>
-      <button type="button" style={{ marginTop: 8 }} onClick={leaveRoom}>
-        別ルームへ
-      </button>
 
       {room?.status === 'lobby' && isRoomHost ? (
         <LobbyHostSettings

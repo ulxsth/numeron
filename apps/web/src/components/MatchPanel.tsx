@@ -133,9 +133,6 @@ export function MatchPanel({
               borderTop: '1px solid #ddd',
             }}
           >
-            <p style={{ width: '100%', fontSize: '0.82rem', color: '#555', margin: '0 0 4px' }}>
-              アイテム（未使用のみ操作可。HIGH&LOW は H(5–9)/L(0–4)。スラッシュは min/max/差・昇順桁列）
-            </p>
             {(
               [
                 {
@@ -149,7 +146,7 @@ export function MatchPanel({
                       onClick={() => void onDoubleStart()}
                       style={{ width: '100%', fontSize: '0.8rem' }}
                     >
-                      使用（2 連コール）
+                      使用
                     </button>
                   ),
                 },

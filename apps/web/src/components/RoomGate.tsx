@@ -10,9 +10,6 @@ export function RoomGate({ joinCode, onJoinCodeChange, onCreateRoom, onJoinRoom 
     <section style={{ marginTop: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
       <div>
         <h2 style={{ fontSize: '1rem' }}>ルーム作成</h2>
-        <p style={{ fontSize: '0.88rem', color: '#555', marginBottom: 8 }}>
-          デフォルトは 3 桁・1 ゲーム。入室後のロビーでホストが変えられるよ（開始するまで）。
-        </p>
         <button type="button" onClick={() => void onCreateRoom()}>
           作成
         </button>
