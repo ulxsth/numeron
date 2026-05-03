@@ -712,7 +712,7 @@ export function App() {
           <div>
             <h2 style={{ fontSize: '1rem' }}>ルーム作成</h2>
             <p style={{ fontSize: '0.88rem', color: '#555', marginBottom: 8 }}>
-              デフォルトは 3 桁・1 ゲーム。入室後（ひとりのロビー）で変えられるよ。
+              デフォルトは 3 桁・1 ゲーム。入室後のロビーでホストが変えられるよ（開始するまで）。
             </p>
             <button type="button" onClick={() => void handleCreateRoom()}>
               作成
@@ -784,11 +784,11 @@ export function App() {
             別ルームへ
           </button>
 
-          {aloneInLobby ? (
+          {room?.status === 'lobby' && isRoomHost ? (
             <div style={{ marginTop: '1rem', padding: '0.85rem', border: '1px solid #ddd', borderRadius: 8 }}>
-              <h2 style={{ fontSize: '1rem', marginTop: 0 }}>ルール（相手が来るまで変更可）</h2>
+              <h2 style={{ fontSize: '1rem', marginTop: 0 }}>ルール（ロビー中は変更可）</h2>
               <p style={{ fontSize: '0.82rem', color: '#555', marginTop: 4 }}>
-                2 人目が参加したら固定されるよ。
+                「ナンバー設定を始める」までいつでも変えられるよ。2 人そろってもホストだけが編集できる。
               </p>
               <label style={{ display: 'block', marginBottom: 8 }}>
                 桁数{' '}
@@ -821,6 +821,11 @@ export function App() {
 
           {twoInLobby ? (
             <div style={{ marginTop: '1rem', padding: '0.85rem', border: '1px solid #cce', borderRadius: 8, background: '#f6f9fc' }}>
+              {!isRoomHost && room ? (
+                <p style={{ margin: '0 0 10px', fontSize: '0.88rem', color: '#444' }}>
+                  いまのルール: {room.digit_length} 桁 · マッチ先取 {room.match_wins_required}（ホストが直すまで変わることがあるよ）
+                </p>
+              ) : null}
               {isRoomHost ? (
                 <>
                   <p style={{ margin: '0 0 10px', fontSize: '0.9rem', color: '#333' }}>

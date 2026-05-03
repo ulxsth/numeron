@@ -48,7 +48,7 @@
 
 ダブル操作は RPC `double_start(room_id)`（手番・未使用カード必須）、`double_submit_reveal_slot(room_id, slot)`（防御のみ、`await_reveal` 時）で行う。
 
-ロビーで**作成者だけ**が部屋にいる間（`lobby`・メンバー 1 名）、桁数とマッチ先取は RPC `room_update_lobby_settings` で変更できる。2 人目参加後は拒否。
+ロビー中（`lobby`）はメンバー 1〜2 名まで変更可。2 名のときはホスト（`created_by`）のみ。ホストが `room_host_begin_secret_setup` で `waiting` にしたあとは変更不可。
 
 2 人在室の `lobby` から、ホスト（`created_by`）だけが `room_host_begin_secret_setup(room_id)` で `waiting` に遷移できる。その後に `room_secrets` の登録が可能（`lobby` 中はトリガーで拒否）。
 
