@@ -24,6 +24,7 @@ export function useNumeronGame() {
   const [itemCards, setItemCards] = useState<ItemCardRow[]>([])
   const [itemEvents, setItemEvents] = useState<ItemEventRow[]>([])
   const [itemSecretPayloads, setItemSecretPayloads] = useState<Record<string, Record<string, unknown>>>({})
+  const [oppSecretDigits, setOppSecretDigits] = useState<string | null>(null)
   const [targetDigitInput, setTargetDigitInput] = useState('')
   const [changeSlot, setChangeSlot] = useState(1)
   const [changeNewDigit, setChangeNewDigit] = useState('')
@@ -76,13 +77,37 @@ export function useNumeronGame() {
       return
     }
     const evs = (eventsRes.data as ItemEventRow[]) ?? []
-    setRoom(roomRes.data as Room)
+    const roomData = roomRes.data as Room
+    const memberRows = membersRes.data ?? []
+    const memberIds = memberRows.map((row) => row.user_id as string)
+    setRoom(roomData)
     setGuesses((guessesRes.data as GuessRow[]) ?? [])
     setMySecretDigits(secretRes.data?.digits ?? null)
-    setMemberCount(membersRes.data?.length ?? 0)
-    setMemberUserIds((membersRes.data ?? []).map((row) => row.user_id as string))
+    setMemberCount(memberRows.length)
+    setMemberUserIds(memberIds)
     setItemCards((cardsRes.data as ItemCardRow[]) ?? [])
     setItemEvents(evs)
+
+    if (roomData.status === 'between_games' && userId) {
+      const oppId = memberIds.find((id) => id !== userId) ?? null
+      if (oppId) {
+        const oppSecRes = await getSupabase()
+          .from('room_secrets')
+          .select('digits')
+          .eq('room_id', roomId)
+          .eq('user_id', oppId)
+          .maybeSingle()
+        if (oppSecRes.error) {
+          setError(oppSecRes.error.message)
+          return
+        }
+        setOppSecretDigits(oppSecRes.data?.digits ?? null)
+      } else {
+        setOppSecretDigits(null)
+      }
+    } else {
+      setOppSecretDigits(null)
+    }
 
     const evIds = evs.map((e) => e.id)
     if (evIds.length === 0) {
@@ -300,6 +325,17 @@ export function useNumeronGame() {
     }
   }
 
+  async function handleConfirmNextRound() {
+    setError(null)
+    if (!roomId) return
+    const { error: e } = await getSupabase().rpc('room_confirm_next_round', { p_room_id: roomId })
+    if (e) {
+      setError(e.message)
+      return
+    }
+    await refreshAll()
+  }
+
   async function handleHostBeginSecretSetup() {
     setError(null)
     if (!roomId) return
@@ -460,6 +496,7 @@ export function useNumeronGame() {
     setItemCards([])
     setItemEvents([])
     setItemSecretPayloads({})
+    setOppSecretDigits(null)
     setMySecretDigits(null)
     setTargetDigitInput('')
     setChangeNewDigit('')
@@ -506,6 +543,16 @@ export function useNumeronGame() {
     const myMatchWins = userId != null && mw != null ? Number(mw[userId] ?? 0) : 0
     const oppUid = userId != null ? (memberUserIds.find((id) => id !== userId) ?? null) : null
     const oppMatchWins = oppUid != null && mw != null ? Number(mw[oppUid] ?? 0) : 0
+
+    const betweenRoundReady = (room?.between_round_ready ?? {}) as Record<string, boolean>
+    const betweenGamesRoundEnded =
+      room?.status === 'between_games' ? Math.max(1, room.current_game_index - 1) : null
+    const lastRoundWinnerId =
+      room?.status === 'between_games' && guesses.length > 0
+        ? guesses[guesses.length - 1]!.guesser_id
+        : null
+    const myNextRoundReady = Boolean(userId && betweenRoundReady[userId])
+    const oppNextRoundReady = Boolean(oppUid && betweenRoundReady[oppUid])
 
     const hasUnusedItem = (k: ItemKind) =>
       Boolean(userId) && itemCards.some((c) => c.user_id === userId && c.item_kind === k && !c.used_at)
@@ -562,6 +609,10 @@ export function useNumeronGame() {
       canSlash,
       canShuffle,
       canChange,
+      betweenGamesRoundEnded,
+      lastRoundWinnerId,
+      myNextRoundReady,
+      oppNextRoundReady,
     }
   }, [
     room,
@@ -583,6 +634,7 @@ export function useNumeronGame() {
     room,
     memberCount,
     mySecretDigits,
+    oppSecretDigits,
     error,
     joinCode,
     setJoinCode,
@@ -608,6 +660,7 @@ export function useNumeronGame() {
     handleSaveLobbySettings,
     copyRoomCode,
     handleHostBeginSecretSetup,
+    handleConfirmNextRound,
     handleSaveSecret,
     handleGuess,
     handleDoubleStart,

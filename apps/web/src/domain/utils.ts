@@ -35,6 +35,8 @@ export function roomStatusLabel(status: string | undefined): string {
       return 'ロビー'
     case 'waiting':
       return 'ナンバー設定'
+    case 'between_games':
+      return '結果確認'
     case 'playing':
       return '対局中'
     case 'finished':

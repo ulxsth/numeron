@@ -31,6 +31,10 @@ type Derived = {
   canSlash: boolean
   canShuffle: boolean
   canChange: boolean
+  betweenGamesRoundEnded: number | null
+  lastRoundWinnerId: string | null
+  myNextRoundReady: boolean
+  oppNextRoundReady: boolean
 }
 
 type Props = {
@@ -38,6 +42,7 @@ type Props = {
   room: Room | null
   memberCount: number
   mySecretDigits: string | null
+  oppSecretDigits: string | null
   derived: Derived
   itemCards: ItemCardRow[]
   lobbyDraftDigit: 3 | 4
@@ -58,6 +63,7 @@ type Props = {
   copyRoomCode: () => void
   handleSaveLobbySettings: (overrides?: { digitLength?: 3 | 4; matchWinsRequired?: number }) => void
   handleHostBeginSecretSetup: () => void
+  handleConfirmNextRound: () => void
   handleSaveSecret: () => void
   handleGuess: () => void
   handleDoubleStart: () => void
@@ -74,6 +80,7 @@ export function RoomView({
   room,
   memberCount,
   mySecretDigits,
+  oppSecretDigits,
   derived,
   itemCards,
   lobbyDraftDigit,
@@ -94,6 +101,7 @@ export function RoomView({
   copyRoomCode,
   handleSaveLobbySettings,
   handleHostBeginSecretSetup,
+  handleConfirmNextRound,
   handleSaveSecret,
   handleGuess,
   handleDoubleStart,
@@ -128,6 +136,10 @@ export function RoomView({
     canSlash,
     canShuffle,
     canChange,
+    betweenGamesRoundEnded,
+    lastRoundWinnerId,
+    myNextRoundReady,
+    oppNextRoundReady,
   } = derived
 
   const showRoomCode =
@@ -190,12 +202,26 @@ export function RoomView({
         />
       ) : null}
 
-      {room && (room.status === 'playing' || room.status === 'finished') ? (
+      {room?.status === 'between_games' && betweenGamesRoundEnded != null ? (
+        <div style={{ marginTop: '1rem' }}>
+          <h2 style={{ fontSize: '1rem', marginTop: 0 }}>第 {betweenGamesRoundEnded} ゲーム終了</h2>
+          <p style={{ marginTop: 6 }}>
+            {lastRoundWinnerId === userId
+              ? 'You Win!'
+              : lastRoundWinnerId
+                ? 'You Lose...'
+                : '勝者情報を取得できませんでした'}
+          </p>
+        </div>
+      ) : null}
+
+      {room && (room.status === 'playing' || room.status === 'finished' || room.status === 'between_games') ? (
         <MatchPanel
           room={room}
           userId={userId}
           dl={dl}
           mySecretDigits={mySecretDigits}
+          oppSecretDigits={oppSecretDigits}
           timeline={timeline}
           doubleRevealLabel={doubleRevealLabel}
           waitingDoubleReveal={waitingDoubleReveal}
@@ -225,6 +251,26 @@ export function RoomView({
           changeNewDigit={changeNewDigit}
           onChangeNewDigitChange={setChangeNewDigit}
         />
+      ) : null}
+
+      {room?.status === 'between_games' && betweenGamesRoundEnded != null ? (
+        <div
+          style={{
+            marginTop: '1rem',
+            padding: '12px 14px',
+            borderRadius: 6,
+            border: '1px solid #bbb',
+            background: '#f9f9f9',
+          }}
+        >
+          <button type="button" style={{ marginTop: 12 }} onClick={() => void handleConfirmNextRound()}>
+            次のラウンドを開始する
+          </button>
+          <p style={{ marginTop: 10, fontSize: '0.82rem', color: '#666' }}>
+            あなた: {myNextRoundReady ? '✅' : ''} <br />
+            相手: {oppNextRoundReady ? '✅' : ''}
+          </p>
+        </div>
       ) : null}
     </section>
   )

@@ -39,6 +39,7 @@ export function App() {
           room={g.room}
           memberCount={g.memberCount}
           mySecretDigits={g.mySecretDigits}
+          oppSecretDigits={g.oppSecretDigits}
           derived={g.derived}
           itemCards={g.itemCards}
           lobbyDraftDigit={g.lobbyDraftDigit}
@@ -59,6 +60,7 @@ export function App() {
           copyRoomCode={g.copyRoomCode}
           handleSaveLobbySettings={g.handleSaveLobbySettings}
           handleHostBeginSecretSetup={g.handleHostBeginSecretSetup}
+          handleConfirmNextRound={g.handleConfirmNextRound}
           handleSaveSecret={g.handleSaveSecret}
           handleGuess={g.handleGuess}
           handleDoubleStart={g.handleDoubleStart}

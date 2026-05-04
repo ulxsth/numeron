@@ -7,6 +7,7 @@ type Props = {
   userId: string
   dl: number
   mySecretDigits: string | null
+  oppSecretDigits: string | null
   timeline: TimelineEntry[]
   doubleRevealLabel: string | null
   waitingDoubleReveal: boolean
@@ -42,6 +43,7 @@ export function MatchPanel({
   userId,
   dl,
   mySecretDigits,
+  oppSecretDigits,
   timeline,
   doubleRevealLabel,
   waitingDoubleReveal,
@@ -95,6 +97,31 @@ export function MatchPanel({
             }}
           >
             {formatSecretDigitsForDisplay(mySecretDigits)}
+          </p>
+        </div>
+      ) : null}
+      {room.status === 'between_games' ? (
+        <div
+          style={{
+            marginTop: '1rem',
+            padding: '10px 12px',
+            borderRadius: 6,
+            border: '1px solid #ddd',
+            background: '#f6fbff',
+          }}
+        >
+          <div style={{ fontSize: '0.78rem', color: '#555' }}>相手のナンバー</div>
+          <p
+            style={{
+              marginTop: 6,
+              marginBottom: 0,
+              fontSize: '1.2rem',
+              letterSpacing: '0.18em',
+              fontVariantNumeric: 'tabular-nums',
+              fontFamily: 'ui-monospace, monospace',
+            }}
+          >
+            {oppSecretDigits ? formatSecretDigitsForDisplay(oppSecretDigits) : '…'}
           </p>
         </div>
       ) : null}

@@ -11,6 +11,8 @@ export type Room = {
   match_wins_required: number
   match_wins: Record<string, number>
   current_game_index: number
+  /** between_games のとき二者確認フラグ（キーは user id 文字列） */
+  between_round_ready?: Record<string, boolean>
   double_attacker_id?: string | null
   double_phase?: string | null
   double_reveal_slot?: number | null
