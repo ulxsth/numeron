@@ -142,8 +142,7 @@ export function RoomView({
     oppNextRoundReady,
   } = derived
 
-  const showRoomCode =
-    !room || (room.status !== 'playing' && room.status !== 'finished')
+  const showRoomCode = !room || room.status === 'lobby'
 
   return (
     <section style={{ marginTop: '1.25rem' }}>
