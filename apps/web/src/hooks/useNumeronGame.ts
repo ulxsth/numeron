@@ -184,7 +184,7 @@ export function useNumeronGame() {
       )
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'room_item_events', filter: filterItemEvents },
+        { event: '*', schema: 'public', table: 'room_item_events', filter: filterItemEvents },
         () => {
           void refreshAll()
         },

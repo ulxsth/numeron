@@ -14,7 +14,7 @@ export function ItemDeckSummary({ userId, room, memberCount, itemCards, oppUid }
   if (memberCount >= 2 && room.status !== 'lobby') {
     return (
       <div style={{ marginTop: '1rem', fontSize: '0.88rem', color: '#333' }}>
-        <h2 style={{ fontSize: '1rem' }}>アイテム（マッチ通算・各 1 回）</h2>
+        <h2 style={{ fontSize: '1rem' }}>アイテム</h2>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.25rem', marginTop: 8 }}>
             <div>
               <div style={{ fontWeight: 600, marginBottom: 4 }}>あなた</div>

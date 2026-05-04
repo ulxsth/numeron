@@ -83,7 +83,7 @@ export function MatchPanel({
             background: '#fafafa',
           }}
         >
-          <div style={{ fontSize: '0.78rem', color: '#555' }}>あなたのナンバー（左から · CHANGE の桁と一致）</div>
+          <div style={{ fontSize: '0.78rem', color: '#555' }}>あなたのナンバー</div>
           <p
             style={{
               marginTop: 6,
@@ -99,7 +99,7 @@ export function MatchPanel({
         </div>
       ) : null}
       <div style={{ marginTop: '1rem' }}>
-        <h2 style={{ fontSize: '1rem' }}>コール & アイテム履歴</h2>
+        <h2 style={{ fontSize: '1rem' }}>履歴</h2>
         {doubleRevealLabel ? (
           <p style={{ fontSize: '0.9rem', color: '#0a5', marginBottom: 8 }}>{doubleRevealLabel}</p>
         ) : null}
@@ -139,7 +139,6 @@ export function MatchPanel({
           {doubleCallHint ? <p style={{ fontSize: '0.88rem', color: '#555' }}>{doubleCallHint}</p> : null}
           <input
             inputMode="numeric"
-            placeholder={`${dl} 桁・重複なし`}
             value={guessInput}
             onChange={(e) => onGuessInputChange(e.target.value)}
           />
