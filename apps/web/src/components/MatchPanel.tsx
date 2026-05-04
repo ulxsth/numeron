@@ -9,7 +9,6 @@ type Props = {
   mySecretDigits: string | null
   oppSecretDigits: string | null
   timeline: TimelineEntry[]
-  doubleRevealLabel: string | null
   waitingDoubleReveal: boolean
   pickDoubleRevealSlot: boolean
   canSubmitGuess: boolean
@@ -45,7 +44,6 @@ export function MatchPanel({
   mySecretDigits,
   oppSecretDigits,
   timeline,
-  doubleRevealLabel,
   waitingDoubleReveal,
   pickDoubleRevealSlot,
   canSubmitGuess,
@@ -127,9 +125,6 @@ export function MatchPanel({
       ) : null}
       <div style={{ marginTop: '1rem' }}>
         <h2 style={{ fontSize: '1rem' }}>履歴</h2>
-        {doubleRevealLabel ? (
-          <p style={{ fontSize: '0.9rem', color: '#0a5', marginBottom: 8 }}>{doubleRevealLabel}</p>
-        ) : null}
         <ul style={{ paddingLeft: '1.2rem' }}>
           {timeline.map((t) =>
             t.kind === 'g' ? (

@@ -48,6 +48,23 @@ export function roomStatusLabel(status: string | undefined): string {
 
 const LOG_HIDDEN = '—'
 
+function formatDoubleItemPublicLine(publicData: Record<string, unknown>): string {
+  const slot = publicData.reveal_slot
+  const digit = publicData.reveal_digit
+  let mid = ''
+  if (typeof slot === 'number' && typeof digit === 'string') {
+    mid = `開示 左から ${slot} 桁目は ${digit}`
+  } else {
+    mid = '使用（開示桁の指定待ち）'
+  }
+  return mid
+}
+
+function levelsPayloadToString(levels: unknown): string | null {
+  if (!Array.isArray(levels)) return null
+  return levels.map((x) => String(x)).join('')
+}
+
 export function formatLogActorTag(viewerId: string, actorId: string): '[自分]' | '[相手]' {
   return actorId === viewerId ? '[自分]' : '[相手]'
 }
@@ -72,10 +89,15 @@ export function formatItemEventLine(
   const you = ev.actor_id === viewerId
 
   switch (ev.item_kind) {
+    case 'DOUBLE': {
+      const subject = ITEM_LABELS.DOUBLE
+      return formatTimelineLine(tag, subject, formatDoubleItemPublicLine(ev.public_data))
+    }
     case 'HIGHLOW': {
       const subject = ITEM_LABELS.HIGHLOW
-      if (you && secretPayload?.levels && Array.isArray(secretPayload.levels)) {
-        return formatTimelineLine(tag, subject, (secretPayload.levels as string[]).join(''))
+      const lv = secretPayload ? levelsPayloadToString(secretPayload.levels) : null
+      if (lv !== null && lv !== '') {
+        return formatTimelineLine(tag, subject, lv)
       }
       return formatTimelineLine(tag, subject, LOG_HIDDEN)
     }
@@ -83,7 +105,7 @@ export function formatItemEventLine(
       const q = ev.public_data.queried_digit
       const subject =
         typeof q === 'number' || typeof q === 'string' ? `${ITEM_LABELS.TARGET} ${q}` : ITEM_LABELS.TARGET
-      if (you && secretPayload && typeof secretPayload.contains === 'boolean') {
+      if (secretPayload && typeof secretPayload.contains === 'boolean') {
         if (secretPayload.contains && typeof secretPayload.slot === 'number') {
           return formatTimelineLine(tag, subject, `含む・左から ${secretPayload.slot} 桁目`)
         }
@@ -93,7 +115,7 @@ export function formatItemEventLine(
     }
     case 'SLASH': {
       const subject = ITEM_LABELS.SLASH
-      if (you && secretPayload && typeof secretPayload.spread === 'number') {
+      if (secretPayload && typeof secretPayload.spread === 'number') {
         return formatTimelineLine(tag, subject, `差 ${String(secretPayload.spread)}`)
       }
       return formatTimelineLine(tag, subject, LOG_HIDDEN)
@@ -105,9 +127,10 @@ export function formatItemEventLine(
     }
     case 'CHANGE': {
       const sl = ev.public_data.slot
-      const subject =
-        typeof sl === 'number' ? `${ITEM_LABELS.CHANGE} · ${sl} 桁目` : ITEM_LABELS.CHANGE
-      return formatTimelineLine(tag, subject, LOG_HIDDEN)
+      if (typeof sl === 'number') {
+        return formatTimelineLine(tag, ITEM_LABELS.CHANGE, `左から ${sl} 桁目を変更`)
+      }
+      return formatTimelineLine(tag, ITEM_LABELS.CHANGE, LOG_HIDDEN)
     }
     default: {
       const k = ev.item_kind as string

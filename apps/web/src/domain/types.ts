@@ -40,7 +40,7 @@ export type ItemEventRow = {
   id: string
   room_id: string
   actor_id: string
-  item_kind: Exclude<ItemKind, 'DOUBLE'>
+  item_kind: ItemKind
   public_data: Record<string, unknown>
   created_at: string
 }

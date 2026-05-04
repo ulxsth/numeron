@@ -521,10 +521,6 @@ export function useNumeronGame() {
       doublePhase === 'await_reveal' &&
       Boolean(doubleAttackerId) &&
       doubleAttackerId !== userId
-    const doubleRevealLabel =
-      room?.double_reveal_slot != null && room?.double_reveal_digit
-        ? `ダブル開示: 左から ${room.double_reveal_slot} 桁目は ${room.double_reveal_digit}`
-        : null
     const hasUnusedDouble =
       Boolean(userId) && itemCards.some((c) => c.user_id === userId && c.item_kind === 'DOUBLE' && !c.used_at)
     const canUseDouble =
@@ -589,7 +585,6 @@ export function useNumeronGame() {
       canSubmitGuess,
       waitingDoubleReveal,
       pickDoubleRevealSlot,
-      doubleRevealLabel,
       hasUnusedDouble,
       canUseDouble,
       doubleCallHint,

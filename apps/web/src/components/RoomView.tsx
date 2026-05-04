@@ -12,7 +12,6 @@ type Derived = {
   canSubmitGuess: boolean
   waitingDoubleReveal: boolean
   pickDoubleRevealSlot: boolean
-  doubleRevealLabel: string | null
   doubleCallHint: string | null
   hasMySecret: boolean
   waitingForOpponentSecret: boolean
@@ -117,7 +116,6 @@ export function RoomView({
     canSubmitGuess,
     waitingDoubleReveal,
     pickDoubleRevealSlot,
-    doubleRevealLabel,
     doubleCallHint,
     hasMySecret,
     waitingForOpponentSecret,
@@ -222,7 +220,6 @@ export function RoomView({
           mySecretDigits={mySecretDigits}
           oppSecretDigits={oppSecretDigits}
           timeline={timeline}
-          doubleRevealLabel={doubleRevealLabel}
           waitingDoubleReveal={waitingDoubleReveal}
           pickDoubleRevealSlot={pickDoubleRevealSlot}
           canSubmitGuess={canSubmitGuess}
