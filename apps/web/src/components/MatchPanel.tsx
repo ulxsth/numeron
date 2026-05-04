@@ -2,6 +2,23 @@ import { ITEM_LABELS } from '../domain/constants'
 import type { Room, TimelineEntry } from '../domain/types'
 import { formatGuessLogLine, formatItemEventLine, formatSecretDigitsForDisplay } from '../domain/utils'
 
+const LOG_TAG_SELF_COLOR = '#1565c0'
+const LOG_TAG_OPP_COLOR = '#c65102'
+
+/** `[自分]` / `[相手]` だけ色を付け、続きは親の文字色のまま */
+function TimelineLogText({ text }: { text: string }) {
+  const m = text.match(/^(\[(?:自分|相手)\]) (.*)$/s)
+  if (!m) return <>{text}</>
+  const [, tag, rest] = m
+  const color = tag === '[自分]' ? LOG_TAG_SELF_COLOR : LOG_TAG_OPP_COLOR
+  return (
+    <>
+      <span style={{ color }}>{tag}</span>
+      {` ${rest}`}
+    </>
+  )
+}
+
 type Props = {
   room: Room
   userId: string
@@ -128,10 +145,12 @@ export function MatchPanel({
         <ul style={{ paddingLeft: '1.2rem' }}>
           {timeline.map((t) =>
             t.kind === 'g' ? (
-              <li key={`g-${t.guess.id}`}>{formatGuessLogLine(t.guess, userId)}</li>
+              <li key={`g-${t.guess.id}`}>
+                <TimelineLogText text={formatGuessLogLine(t.guess, userId)} />
+              </li>
             ) : (
               <li key={`i-${t.ev.id}`} style={{ color: '#274' }}>
-                {formatItemEventLine(t.ev, userId, t.secretPayload)}
+                <TimelineLogText text={formatItemEventLine(t.ev, userId, t.secretPayload)} />
               </li>
             ),
           )}
