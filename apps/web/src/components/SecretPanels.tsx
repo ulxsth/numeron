@@ -1,10 +1,12 @@
 import type { Room } from '../domain/types'
+import { formatSecretDigitsForDisplay } from '../domain/utils'
 
 type Props = {
   room: Room
   dl: number
   winsReq: number
   memberCount: number
+  mySecretDigits: string | null
   secretInput: string
   onSecretInputChange: (v: string) => void
   onSaveSecret: () => void
@@ -17,6 +19,7 @@ export function SecretPanels({
   dl,
   winsReq,
   memberCount,
+  mySecretDigits,
   secretInput,
   onSecretInputChange,
   onSaveSecret,
@@ -46,13 +49,27 @@ export function SecretPanels({
       ) : null}
 
       {hasMySecret && room.status === 'waiting' ? (
-        <p style={{ marginTop: '1rem', color: '#444' }}>
-          {memberCount < 2
-            ? '相手の参加を待ってる'
-            : waitingForOpponentSecret
-              ? '相手のナンバー登録を待ってる'
-              : '開始待ち'}
-        </p>
+        <div style={{ marginTop: '1rem' }}>
+          <h2 style={{ fontSize: '1rem' }}>あなたのナンバー（左から）</h2>
+          <p
+            style={{
+              marginTop: 6,
+              fontSize: '1.2rem',
+              letterSpacing: '0.18em',
+              fontVariantNumeric: 'tabular-nums',
+              fontFamily: 'ui-monospace, monospace',
+            }}
+          >
+            {mySecretDigits ? formatSecretDigitsForDisplay(mySecretDigits) : '…'}
+          </p>
+          <p style={{ marginTop: '0.75rem', color: '#444' }}>
+            {memberCount < 2
+              ? '相手の参加を待ってる'
+              : waitingForOpponentSecret
+                ? '相手のナンバー登録を待ってる'
+                : '開始待ち'}
+          </p>
+        </div>
       ) : null}
     </>
   )

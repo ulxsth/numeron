@@ -24,6 +24,11 @@ export function errMessage(e: unknown): string {
   return String(e)
 }
 
+/** 自分のナンバー表示用（サーバー上の左からの並び） */
+export function formatSecretDigitsForDisplay(digits: string): string {
+  return digits.split('').join(' ')
+}
+
 export function roomStatusLabel(status: string | undefined): string {
   switch (status) {
     case 'lobby':

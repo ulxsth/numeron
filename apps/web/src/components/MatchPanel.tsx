@@ -1,11 +1,12 @@
 import { ITEM_LABELS } from '../domain/constants'
 import type { Room, TimelineEntry } from '../domain/types'
-import { formatGuessLogLine, formatItemEventLine } from '../domain/utils'
+import { formatGuessLogLine, formatItemEventLine, formatSecretDigitsForDisplay } from '../domain/utils'
 
 type Props = {
   room: Room
   userId: string
   dl: number
+  mySecretDigits: string | null
   timeline: TimelineEntry[]
   doubleRevealLabel: string | null
   waitingDoubleReveal: boolean
@@ -40,6 +41,7 @@ export function MatchPanel({
   room,
   userId,
   dl,
+  mySecretDigits,
   timeline,
   doubleRevealLabel,
   waitingDoubleReveal,
@@ -71,6 +73,31 @@ export function MatchPanel({
 }: Props) {
   return (
     <>
+      {mySecretDigits ? (
+        <div
+          style={{
+            marginTop: '1rem',
+            padding: '10px 12px',
+            borderRadius: 6,
+            border: '1px solid #ddd',
+            background: '#fafafa',
+          }}
+        >
+          <div style={{ fontSize: '0.78rem', color: '#555' }}>あなたのナンバー（左から · CHANGE の桁と一致）</div>
+          <p
+            style={{
+              marginTop: 6,
+              marginBottom: 0,
+              fontSize: '1.2rem',
+              letterSpacing: '0.18em',
+              fontVariantNumeric: 'tabular-nums',
+              fontFamily: 'ui-monospace, monospace',
+            }}
+          >
+            {formatSecretDigitsForDisplay(mySecretDigits)}
+          </p>
+        </div>
+      ) : null}
       <div style={{ marginTop: '1rem' }}>
         <h2 style={{ fontSize: '1rem' }}>コール & アイテム履歴</h2>
         {doubleRevealLabel ? (

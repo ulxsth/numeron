@@ -37,6 +37,7 @@ type Props = {
   userId: string
   room: Room | null
   memberCount: number
+  mySecretDigits: string | null
   derived: Derived
   itemCards: ItemCardRow[]
   lobbyDraftDigit: 3 | 4
@@ -72,6 +73,7 @@ export function RoomView({
   userId,
   room,
   memberCount,
+  mySecretDigits,
   derived,
   itemCards,
   lobbyDraftDigit,
@@ -179,6 +181,7 @@ export function RoomView({
           dl={dl}
           winsReq={winsReq}
           memberCount={memberCount}
+          mySecretDigits={mySecretDigits}
           secretInput={secretInput}
           onSecretInputChange={setSecretInput}
           onSaveSecret={handleSaveSecret}
@@ -192,6 +195,7 @@ export function RoomView({
           room={room}
           userId={userId}
           dl={dl}
+          mySecretDigits={mySecretDigits}
           timeline={timeline}
           doubleRevealLabel={doubleRevealLabel}
           waitingDoubleReveal={waitingDoubleReveal}

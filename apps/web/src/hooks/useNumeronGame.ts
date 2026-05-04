@@ -582,6 +582,7 @@ export function useNumeronGame() {
     roomId,
     room,
     memberCount,
+    mySecretDigits,
     error,
     joinCode,
     setJoinCode,

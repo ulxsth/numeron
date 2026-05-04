@@ -38,6 +38,7 @@ export function App() {
           userId={userId}
           room={g.room}
           memberCount={g.memberCount}
+          mySecretDigits={g.mySecretDigits}
           derived={g.derived}
           itemCards={g.itemCards}
           lobbyDraftDigit={g.lobbyDraftDigit}
