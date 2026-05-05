@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { ITEM_LABELS } from '../domain/constants'
 import type { Room, TimelineEntry } from '../domain/types'
 import { formatGuessLogLine, formatItemEventLine, formatSecretDigitsForDisplay } from '../domain/utils'
@@ -111,6 +111,25 @@ export function MatchPanel({
     [timeline, userId, logFilters],
   )
 
+  const logScrollElRef = useRef<HTMLDivElement>(null)
+
+  const logScrollTrigger = useMemo(() => {
+    const lastT = timeline[timeline.length - 1]
+    const tailT = lastT ? (lastT.kind === 'g' ? lastT.guess.id : lastT.ev.id) : ''
+    const lastF = filteredTimeline[filteredTimeline.length - 1]
+    const tailF = lastF ? (lastF.kind === 'g' ? lastF.guess.id : lastF.ev.id) : ''
+    return `${tailT}:${filteredTimeline.length}:${tailF}`
+  }, [timeline, filteredTimeline])
+
+  useEffect(() => {
+    const el = logScrollElRef.current
+    if (!el) return
+    const id = requestAnimationFrame(() => {
+      el.scrollTop = el.scrollHeight
+    })
+    return () => cancelAnimationFrame(id)
+  }, [logScrollTrigger])
+
   const toggleLogFilter = (key: LogFilterKey) => {
     setLogFilters((prev) => ({ ...prev, [key]: !prev[key] }))
   }
@@ -194,38 +213,58 @@ export function MatchPanel({
             </label>
           ))}
         </div>
-        
-          <ul style={{ margin: '0.35rem 0 0', padding: 0, listStyle: 'none' }}>
-            {filteredTimeline.map((t) =>
-              t.kind === 'g' ? (
-                <li
-                  key={`g-${t.guess.id}`}
-                  style={{
-                    marginBottom: 8,
-                    paddingLeft: 12,
-                    borderLeft: '2px solid #d8d8d8',
-                    lineHeight: 1.45,
-                    color: '#222',
-                  }}
-                >
-                  <TimelineLogText text={formatGuessLogLine(t.guess, userId)} />
-                </li>
-              ) : (
-                <li
-                  key={`i-${t.ev.id}`}
-                  style={{
-                    marginBottom: 8,
-                    paddingLeft: 12,
-                    borderLeft: '2px solid #c4c4c4',
-                    lineHeight: 1.45,
-                    color: '#333',
-                  }}
-                >
-                  <TimelineLogText text={formatItemEventLine(t.ev, userId, t.secretPayload)} />
-                </li>
-              ),
-            )}
-          </ul>
+        <div
+          ref={logScrollElRef}
+          style={{
+            height: 'min(40vh, 17.5rem)',
+            overflowY: 'auto',
+            overflowX: 'hidden',
+            marginTop: 4,
+            padding: '8px 10px 8px 8px',
+            border: '1px solid #eaeaea',
+            borderRadius: 4,
+            background: '#fafafa',
+            overscrollBehavior: 'contain',
+          }}
+        >
+          {filteredTimeline.length === 0 ? (
+            <p style={{ margin: '6px 4px', fontSize: '0.88rem', color: '#666' }}>
+              表示する項目がないか、該当する履歴がありません。
+            </p>
+          ) : (
+            <ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>
+              {filteredTimeline.map((t) =>
+                t.kind === 'g' ? (
+                  <li
+                    key={`g-${t.guess.id}`}
+                    style={{
+                      marginBottom: 8,
+                      paddingLeft: 12,
+                      borderLeft: '2px solid #d8d8d8',
+                      lineHeight: 1.45,
+                      color: '#222',
+                    }}
+                  >
+                    <TimelineLogText text={formatGuessLogLine(t.guess, userId)} />
+                  </li>
+                ) : (
+                  <li
+                    key={`i-${t.ev.id}`}
+                    style={{
+                      marginBottom: 8,
+                      paddingLeft: 12,
+                      borderLeft: '2px solid #c4c4c4',
+                      lineHeight: 1.45,
+                      color: '#333',
+                    }}
+                  >
+                    <TimelineLogText text={formatItemEventLine(t.ev, userId, t.secretPayload)} />
+                  </li>
+                ),
+              )}
+            </ul>
+          )}
+        </div>
       </div>
       {room.status === 'playing' && waitingDoubleReveal ? (
         <p style={{ marginTop: '1rem', color: '#444' }}>
