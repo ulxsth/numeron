@@ -1,15 +1,35 @@
+import { useMemo, useState } from 'react'
 import { ITEM_LABELS } from '../domain/constants'
 import type { Room, TimelineEntry } from '../domain/types'
 import { formatGuessLogLine, formatItemEventLine, formatSecretDigitsForDisplay } from '../domain/utils'
 
-/** `[自分]` / `[相手]` を少し強調（色は付けず太さのみ） */
+type LogFilterKey = 'my_call' | 'opp_call' | 'my_item' | 'opp_item'
+
+const LOG_FILTER_DEFAULTS: Record<LogFilterKey, boolean> = {
+  my_call: true,
+  opp_call: true,
+  my_item: true,
+  opp_item: true,
+}
+
+function timelineEntryPassesFilter(t: TimelineEntry, userId: string, f: Record<LogFilterKey, boolean>): boolean {
+  if (t.kind === 'g') {
+    const mine = t.guess.guesser_id === userId
+    return (mine && f.my_call) || (!mine && f.opp_call)
+  }
+  const mine = t.ev.actor_id === userId
+  return (mine && f.my_item) || (!mine && f.opp_item)
+}
+
+/** `[自分]` / `[相手]` を色分けして強調 */
 function TimelineLogText({ text }: { text: string }) {
   const m = text.match(/^(\[(?:自分|相手)\]) (.*)$/s)
   if (!m) return <>{text}</>
   const [, tag, rest] = m
+  const tagColor = tag === '[自分]' ? '#1565c0' : '#bf360c'
   return (
     <>
-      <span style={{ fontWeight: 600, color: '#333' }}>{tag}</span>
+      <span style={{ fontWeight: 600, color: tagColor }}>{tag}</span>
       {` ${rest}`}
     </>
   )
@@ -84,6 +104,17 @@ export function MatchPanel({
   changeNewDigit,
   onChangeNewDigitChange,
 }: Props) {
+  const [logFilters, setLogFilters] = useState<Record<LogFilterKey, boolean>>(() => ({ ...LOG_FILTER_DEFAULTS }))
+
+  const filteredTimeline = useMemo(
+    () => timeline.filter((t) => timelineEntryPassesFilter(t, userId, logFilters)),
+    [timeline, userId, logFilters],
+  )
+
+  const toggleLogFilter = (key: LogFilterKey) => {
+    setLogFilters((prev) => ({ ...prev, [key]: !prev[key] }))
+  }
+
   return (
     <>
       {mySecretDigits ? (
@@ -138,37 +169,63 @@ export function MatchPanel({
       ) : null}
       <div style={{ marginTop: '1.25rem' }}>
         <h2 style={{ fontSize: '1rem', marginTop: 0, marginBottom: '0.35rem' }}>履歴</h2>
-        <ul style={{ margin: '0.35rem 0 0', padding: 0, listStyle: 'none' }}>
-          {timeline.map((t) =>
-            t.kind === 'g' ? (
-              <li
-                key={`g-${t.guess.id}`}
-                style={{
-                  marginBottom: 8,
-                  paddingLeft: 12,
-                  borderLeft: '2px solid #d8d8d8',
-                  lineHeight: 1.45,
-                  color: '#222',
-                }}
-              >
-                <TimelineLogText text={formatGuessLogLine(t.guess, userId)} />
-              </li>
-            ) : (
-              <li
-                key={`i-${t.ev.id}`}
-                style={{
-                  marginBottom: 8,
-                  paddingLeft: 12,
-                  borderLeft: '2px solid #c4c4c4',
-                  lineHeight: 1.45,
-                  color: '#333',
-                }}
-              >
-                <TimelineLogText text={formatItemEventLine(t.ev, userId, t.secretPayload)} />
-              </li>
-            ),
-          )}
-        </ul>
+        <div
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: '10px 14px',
+            marginTop: 8,
+            marginBottom: 10,
+            fontSize: '0.82rem',
+            color: '#444',
+          }}
+        >
+          {(
+            [
+              { key: 'my_call' as const, label: '自分のコール' },
+              { key: 'opp_call' as const, label: '相手のコール' },
+              { key: 'my_item' as const, label: '自分のアイテム' },
+              { key: 'opp_item' as const, label: '相手のアイテム' },
+            ] as const
+          ).map(({ key, label }) => (
+            <label key={key} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+              <input type="checkbox" checked={logFilters[key]} onChange={() => toggleLogFilter(key)} />
+              {label}
+            </label>
+          ))}
+        </div>
+        
+          <ul style={{ margin: '0.35rem 0 0', padding: 0, listStyle: 'none' }}>
+            {filteredTimeline.map((t) =>
+              t.kind === 'g' ? (
+                <li
+                  key={`g-${t.guess.id}`}
+                  style={{
+                    marginBottom: 8,
+                    paddingLeft: 12,
+                    borderLeft: '2px solid #d8d8d8',
+                    lineHeight: 1.45,
+                    color: '#222',
+                  }}
+                >
+                  <TimelineLogText text={formatGuessLogLine(t.guess, userId)} />
+                </li>
+              ) : (
+                <li
+                  key={`i-${t.ev.id}`}
+                  style={{
+                    marginBottom: 8,
+                    paddingLeft: 12,
+                    borderLeft: '2px solid #c4c4c4',
+                    lineHeight: 1.45,
+                    color: '#333',
+                  }}
+                >
+                  <TimelineLogText text={formatItemEventLine(t.ev, userId, t.secretPayload)} />
+                </li>
+              ),
+            )}
+          </ul>
       </div>
       {room.status === 'playing' && waitingDoubleReveal ? (
         <p style={{ marginTop: '1rem', color: '#444' }}>
