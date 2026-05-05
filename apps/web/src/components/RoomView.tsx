@@ -143,14 +143,23 @@ export function RoomView({
   const showRoomCode = !room || room.status === 'lobby'
 
   return (
-    <section style={{ marginTop: '1.25rem' }}>
-      <button type="button" style={{ marginTop: 16, marginBottom: 16 }} onClick={leaveRoom}>
+    <section style={{ marginTop: '0.5rem' }}>
+      <button type="button" style={{ margin: '0 0 1rem' }} onClick={leaveRoom}>
         もどる
       </button>
       {showRoomCode ? (
         <RoomCodeCard roomCode={roomCode} codeCopiedHint={codeCopiedHint} onCopy={copyRoomCode} />
       ) : null}
-      <p style={{ fontSize: '0.9rem', color: '#444' }}>
+      <p
+        style={{
+          fontSize: '0.9rem',
+          color: '#5a5a5a',
+          margin: '0 0 1rem',
+          paddingBottom: '0.75rem',
+          borderBottom: '1px solid #eaeaea',
+          lineHeight: 1.45,
+        }}
+      >
         メンバー {memberCount} / 2 · {roomStatusLabel(room?.status)}
         {room && winsReq > 1 ? (
           <>
@@ -200,9 +209,9 @@ export function RoomView({
       ) : null}
 
       {room?.status === 'between_games' && betweenGamesRoundEnded != null ? (
-        <div style={{ marginTop: '1rem' }}>
-          <h2 style={{ fontSize: '1rem', marginTop: 0 }}>第 {betweenGamesRoundEnded} ゲーム終了</h2>
-          <p style={{ marginTop: 6 }}>
+        <div style={{ marginTop: '1.25rem' }}>
+          <h2 style={{ fontSize: '1rem', marginTop: 0, marginBottom: '0.35rem' }}>第 {betweenGamesRoundEnded} ゲーム終了</h2>
+          <p style={{ marginTop: 0, marginBottom: 0, lineHeight: 1.5 }}>
             {lastRoundWinnerId === userId
               ? 'You Win!'
               : lastRoundWinnerId
@@ -252,17 +261,17 @@ export function RoomView({
       {room?.status === 'between_games' && betweenGamesRoundEnded != null ? (
         <div
           style={{
-            marginTop: '1rem',
-            padding: '12px 14px',
-            borderRadius: 6,
-            border: '1px solid #bbb',
-            background: '#f9f9f9',
+            marginTop: '1.25rem',
+            padding: '14px 16px',
+            borderRadius: 4,
+            border: '1px solid #e0e0e0',
+            background: '#fff',
           }}
         >
-          <button type="button" style={{ marginTop: 12 }} onClick={() => void handleConfirmNextRound()}>
+          <button type="button" style={{ marginTop: 0 }} onClick={() => void handleConfirmNextRound()}>
             次のラウンドを開始する
           </button>
-          <p style={{ marginTop: 10, fontSize: '0.82rem', color: '#666' }}>
+          <p style={{ marginTop: '0.75rem', marginBottom: 0, fontSize: '0.82rem', color: '#666', lineHeight: 1.55 }}>
             あなた: {myNextRoundReady ? '✅' : ''} <br />
             相手: {oppNextRoundReady ? '✅' : ''}
           </p>

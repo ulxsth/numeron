@@ -8,14 +8,14 @@ export function RoomCodeCard({ roomCode, codeCopiedHint, onCopy }: Props) {
   return (
     <div
       style={{
-        padding: '1rem',
-        borderRadius: 8,
-        border: '1px solid #ccc',
-        background: '#f8f8f8',
+        padding: '14px 16px',
+        borderRadius: 4,
+        border: '1px solid #e0e0e0',
+        background: '#fff',
         marginBottom: '1rem',
       }}
     >
-      <p style={{ margin: 0, fontSize: '0.85rem', color: '#555' }}>ルームコード</p>
+      <p style={{ margin: 0, fontSize: '0.85rem', color: '#666' }}>ルームコード</p>
       <p
         style={{
           margin: '6px 0 0',
@@ -32,7 +32,7 @@ export function RoomCodeCard({ roomCode, codeCopiedHint, onCopy }: Props) {
           <button type="button" onClick={() => void onCopy()} style={{ marginRight: 10 }}>
             クリップボードにコピー
           </button>
-          {codeCopiedHint ? <span style={{ color: '#0a5' }}>コピーしたよ</span> : null}
+          {codeCopiedHint ? <span style={{ color: '#555' }}>コピーしたよ</span> : null}
         </p>
       ) : null}
     </div>

@@ -10,7 +10,7 @@ export function LobbyTwoPlayersCTA({ room, isRoomHost, onHostBeginSecretSetup }:
   return (
     <div
       style={{
-        marginTop: '1rem',
+        marginTop: '1.25rem',
       }}
     >
       {!isRoomHost ? (

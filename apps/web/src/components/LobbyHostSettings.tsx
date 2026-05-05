@@ -14,8 +14,16 @@ export function LobbyHostSettings({
   onSaveLobbySettings,
 }: Props) {
   return (
-    <div style={{ marginTop: '1rem', padding: '0.85rem', border: '1px solid #ddd', borderRadius: 8 }}>
-      <h2 style={{ fontSize: '1rem', marginTop: 0 }}>ルール</h2>
+    <div
+      style={{
+        marginTop: '1.25rem',
+        padding: '14px 16px',
+        border: '1px solid #e0e0e0',
+        borderRadius: 4,
+        background: '#fff',
+      }}
+    >
+      <h2 style={{ fontSize: '1rem', marginTop: 0, marginBottom: '0.65rem' }}>ルール</h2>
       <label style={{ display: 'block', marginBottom: 8 }}>
         桁数{' '}
         <select

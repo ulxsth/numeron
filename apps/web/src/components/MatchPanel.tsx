@@ -2,18 +2,14 @@ import { ITEM_LABELS } from '../domain/constants'
 import type { Room, TimelineEntry } from '../domain/types'
 import { formatGuessLogLine, formatItemEventLine, formatSecretDigitsForDisplay } from '../domain/utils'
 
-const LOG_TAG_SELF_COLOR = '#1565c0'
-const LOG_TAG_OPP_COLOR = '#c65102'
-
-/** `[自分]` / `[相手]` だけ色を付け、続きは親の文字色のまま */
+/** `[自分]` / `[相手]` を少し強調（色は付けず太さのみ） */
 function TimelineLogText({ text }: { text: string }) {
   const m = text.match(/^(\[(?:自分|相手)\]) (.*)$/s)
   if (!m) return <>{text}</>
   const [, tag, rest] = m
-  const color = tag === '[自分]' ? LOG_TAG_SELF_COLOR : LOG_TAG_OPP_COLOR
   return (
     <>
-      <span style={{ color }}>{tag}</span>
+      <span style={{ fontWeight: 600, color: '#333' }}>{tag}</span>
       {` ${rest}`}
     </>
   )
@@ -93,14 +89,14 @@ export function MatchPanel({
       {mySecretDigits ? (
         <div
           style={{
-            marginTop: '1rem',
-            padding: '10px 12px',
-            borderRadius: 6,
-            border: '1px solid #ddd',
+            marginTop: '1.25rem',
+            padding: '12px 14px',
+            borderRadius: 4,
+            border: '1px solid #e0e0e0',
             background: '#fafafa',
           }}
         >
-          <div style={{ fontSize: '0.78rem', color: '#555' }}>あなたのナンバー</div>
+          <div style={{ fontSize: '0.78rem', color: '#5a5a5a' }}>あなたのナンバー</div>
           <p
             style={{
               marginTop: 6,
@@ -118,14 +114,14 @@ export function MatchPanel({
       {room.status === 'between_games' ? (
         <div
           style={{
-            marginTop: '1rem',
-            padding: '10px 12px',
-            borderRadius: 6,
-            border: '1px solid #ddd',
-            background: '#f6fbff',
+            marginTop: '1.25rem',
+            padding: '12px 14px',
+            borderRadius: 4,
+            border: '1px solid #e0e0e0',
+            background: '#fafafa',
           }}
         >
-          <div style={{ fontSize: '0.78rem', color: '#555' }}>相手のナンバー</div>
+          <div style={{ fontSize: '0.78rem', color: '#5a5a5a' }}>相手のナンバー</div>
           <p
             style={{
               marginTop: 6,
@@ -140,16 +136,34 @@ export function MatchPanel({
           </p>
         </div>
       ) : null}
-      <div style={{ marginTop: '1rem' }}>
-        <h2 style={{ fontSize: '1rem' }}>履歴</h2>
-        <ul style={{ paddingLeft: '1.2rem' }}>
+      <div style={{ marginTop: '1.25rem' }}>
+        <h2 style={{ fontSize: '1rem', marginTop: 0, marginBottom: '0.35rem' }}>履歴</h2>
+        <ul style={{ margin: '0.35rem 0 0', padding: 0, listStyle: 'none' }}>
           {timeline.map((t) =>
             t.kind === 'g' ? (
-              <li key={`g-${t.guess.id}`}>
+              <li
+                key={`g-${t.guess.id}`}
+                style={{
+                  marginBottom: 8,
+                  paddingLeft: 12,
+                  borderLeft: '2px solid #d8d8d8',
+                  lineHeight: 1.45,
+                  color: '#222',
+                }}
+              >
                 <TimelineLogText text={formatGuessLogLine(t.guess, userId)} />
               </li>
             ) : (
-              <li key={`i-${t.ev.id}`} style={{ color: '#274' }}>
+              <li
+                key={`i-${t.ev.id}`}
+                style={{
+                  marginBottom: 8,
+                  paddingLeft: 12,
+                  borderLeft: '2px solid #c4c4c4',
+                  lineHeight: 1.45,
+                  color: '#333',
+                }}
+              >
                 <TimelineLogText text={formatItemEventLine(t.ev, userId, t.secretPayload)} />
               </li>
             ),
@@ -194,7 +208,7 @@ export function MatchPanel({
               gap: 10,
               marginTop: 14,
               paddingTop: 12,
-              borderTop: '1px solid #ddd',
+              borderTop: '1px solid #eaeaea',
             }}
           >
             {(
@@ -305,19 +319,19 @@ export function MatchPanel({
             ).map(({ key, label, active, body }) => (
               <div
                 key={key}
-                style={{
-                  flex: '1 1 92px',
-                  minWidth: 88,
-                  maxWidth: 140,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 6,
-                  padding: 8,
-                  border: '1px solid #ddd',
-                  borderRadius: 6,
-                  background: '#fafafa',
-                  opacity: active ? 1 : 0.5,
-                }}
+            style={{
+              flex: '1 1 92px',
+              minWidth: 88,
+              maxWidth: 140,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 6,
+              padding: 8,
+              border: '1px solid #e0e0e0',
+              borderRadius: 4,
+              background: '#fff',
+              opacity: active ? 1 : 0.5,
+            }}
               >
                 <div style={{ fontSize: '0.78rem', fontWeight: 600, lineHeight: 1.25 }}>{label}</div>
                 {body}
